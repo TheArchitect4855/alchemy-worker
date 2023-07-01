@@ -1,0 +1,69 @@
+-- To extend this to support more contact methods (e.g. email),
+-- make both phone and email nullable and then add a check constraint.
+CREATE TABLE contacts (
+	id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+	phone TEXT NOT NULL UNIQUE,
+	dob DATE NOT NULL,
+	is_redlisted BOOLEAN NOT NULL DEFAULT FALSE,
+	tos_agreed BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE likes (
+	contact UUID NOT NULL REFERENCES contacts (id),
+	likes UUID NOT NULL REFERENCES contacts (id),
+	liked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+	UNIQUE (contact, likes)
+);
+
+CREATE TABLE messages (
+	id SERIAL NOT NULL UNIQUE,
+	from_contact UUID NOT NULL REFERENCES contacts (id),
+	to_contact UUID NOT NULL REFERENCES contacts (id),
+	content VARCHAR(256) NOT NULL,
+	sent_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+	read_at TIMESTAMPTZ,
+	PRIMARY KEY (to_contact, from_contact, id)
+);
+
+CREATE TABLE preferences (
+	contact UUID NOT NULL PRIMARY KEY REFERENCES contacts (id),
+	allow_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+	show_transgender BOOLEAN NOT NULL,
+	gender_interests TEXT[] NOT NULL CHECK (gender_interests <@ ARRAY['men', 'nonbinary', 'women']),
+);
+
+CREATE TABLE profiles (
+	contact UUID NOT NULL PRIMARY KEY REFERENCES contacts (id),
+	name VARCHAR(128) NOT NULL,
+	bio VARCHAR(1024) NOT NULL,
+	gender VARCHAR(16) NOT NULL,
+	is_transgender BOOLEAN NOT NULL,
+	relationship_interests TEXT[] NOT NULL CHECK (relationship_interests <@ ARRAY['flings', 'friends', 'romance']),
+	is_visible BOOLEAN NOT NULL DEFAULT FALSE,
+	last_location GEOMETRY (Point, 4326) NOT NULL,
+	last_location_name VARCHAR(32) NOT NULL,
+	photo_urls TEXT[] NOT NULL DEFAULT '{}',
+	neurodiversities VARCHAR(32)[],
+	interests VARCHAR(32)[],
+	pronouns VARCHAR(32)
+);
+
+CREATE TABLE reports (
+	contact UUID NOT NULL REFERENCES contacts (id),
+	reporter UUID NOT NULL REFERENCES contacts (id),
+	reason TEXT NOT NULL,
+	UNIQUE (contact, reporter)
+);
+
+CREATE TABLE review_queue (
+	id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+	kind TEXT NOT NULL CHECK (kind IN ('profile')),
+	item UUID NOT NULL UNIQUE
+);
+
+CREATE TABLE waiting_list (
+	phone TEXT NOT NULL PRIMARY KEY,
+	iso_country CHAR(2) NOT NULL,
+	administrative_area VARCHAR(128) NOT NULL,
+	locality VARCHAR(128) NOT NULL
+);
