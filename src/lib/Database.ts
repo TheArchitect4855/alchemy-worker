@@ -3,6 +3,7 @@ import { Match, Profile, Message, Preferences, Contact } from "./database/types"
 import { Duration } from "./time";
 import Location from "./Location";
 import { CachedDatabaseInterface, DatabaseInterface, NeonDatabaseInterface } from "./database/dbi";
+import { canMessageContactSchema, contactSchema, explorePreferencesSchema, preferencesSchema, profileSchema } from "./database/cache_schemas";
 
 const likesMaxAge = '24 HOURS';
 
@@ -31,6 +32,7 @@ export default class Database {
 				AND l1.likes = $2
 		`, [ from, to ], {
 			key: `canMessage.${ord.join('.')}`,
+			schema: canMessageContactSchema,
 			expirationTtl: 300,
 		});
 
@@ -54,6 +56,7 @@ export default class Database {
 			WHERE id = $1
 		`, [ id ], {
 			key: `contact.${id}`,
+			schema: contactSchema,
 			expirationTtl: 500,
 		});
 
@@ -108,6 +111,7 @@ export default class Database {
 			WHERE co.id = $1
 		`, [ contact ], {
 			key: `explore.preferences.${contact}`,
+			schema: explorePreferencesSchema,
 			expirationTtl: 300,
 		});
 
@@ -325,6 +329,7 @@ export default class Database {
 				pronouns
 		`, [ [url], contact, dob ], {
 			key: `profile.${contact}`,
+			schema: profileSchema,
 			expirationTtl: 3600,
 		});
 
@@ -346,21 +351,33 @@ export default class Database {
 				pronouns
 		`, [ url, contact, dob ], {
 			key: `profile.${contact}`,
+			schema: profileSchema,
 			expirationTtl: 3600,
 		});
 	}
 
-	async preferencesGet(contact: string): Promise<Preferences | null> {
-		const row = await this._interface.readOne(`
+	async preferencesGet(contact: string): Promise<Preferences> {
+		const cacheOpts = {
+			key: `preferences.${contact}`,
+			schema: preferencesSchema,
+			expirationTtl: 300,
+		};
+
+		let row = await this._interface.readOne(`
 			SELECT contact, allow_notifications, show_transgender, gender_interests
 			FROM preferences
 			WHERE contact = $1
-		`, [ contact ], {
-			key: `preferences.${contact}`,
-			expirationTtl: 300,
-		});
+		`, [ contact ], cacheOpts);
 
-		if (row == null) return null;
+		if (row == null) {
+			row = (await this._interface.writeOne(`
+				INSERT INTO preferences (
+					contact, allow_notifications, show_transgender,
+					gender_interests
+				) VALUES ($1, true, true, '{ "men", "nonbinary", "women" }')
+				RETURNING contact, allow_notifications, show_transgender, gender_interests
+			`, [ contact ], cacheOpts))!;
+		}
 
 		return {
 			allowNotifications: row.allow_notifications,
@@ -376,6 +393,7 @@ export default class Database {
 				show_transgender = $3,
 				gender_interests = $4
 			WHERE contact = $1
+			RETURNING contact, allow_notifications, show_transgender, gender_interests
 		`, [
 			contact,
 			preferences.allowNotifications,
@@ -383,6 +401,7 @@ export default class Database {
 			preferences.genderInterests
 		], {
 			key: `preferences.${contact}`,
+			schema: preferencesSchema,
 			expirationTtl: 300,
 		});
 	}
@@ -429,8 +448,14 @@ export default class Database {
 			photoUrls,
 		], {
 			key: `profile.${contact}`,
+			schema: profileSchema,
 			expirationTtl: 3600,
 		}))!;
+
+		await this._interface.writeOne(`
+			INSERT INTO review_queue (kind, item)
+			VALUES ('profile', $1)
+		`, [ row.contact ], null);
 
 		const age = Math.floor(Duration.between(new Date(), new Date(row.dob)).asYears());
 		return {
@@ -460,6 +485,7 @@ export default class Database {
 			WHERE co.id = $1
 		`, [ contact ], {
 			key: `profile.${contact}`,
+			schema: profileSchema,
 			expirationTtl: 3600,
 		});
 
@@ -519,10 +545,17 @@ export default class Database {
 			dob,
 		], {
 			key: `profile.${contact}`,
+			schema: profileSchema,
 			expirationTtl: 3600,
 		});
 
 		if (row == null) throw new Error('invalid contact');
+
+		await this._interface.writeOne(`
+			INSERT INTO review_queue (kind, item)
+			VALUES ('profile', $1)
+			ON CONFLICT DO NOTHING
+		`, [ row.contact ], null);
 
 		const age = Math.floor(Duration.between(new Date(), new Date(row.dob)).asYears());
 		return {
@@ -560,10 +593,17 @@ export default class Database {
 		`, [ contact ]);
 
 		await this._interface.deleteOne(`
+			DELETE FROM review_queue
+			WHERE kind = 'profile'
+				AND item = $1
+		`, [ contact ], null);
+
+		await this._interface.deleteOne(`
 			DELETE FROM profiles
 			WHERE contact = $1
 		`, [ contact ], {
 			key: `profile.${contact}`,
+			schema: profileSchema,
 		});
 	}
 

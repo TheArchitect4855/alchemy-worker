@@ -68,7 +68,7 @@ export default {
 				const id = (Date.now() % 86_400_000).toString(16);
 				console.log(`Internal server error ${id}: ${e}`);
 				console.error(e);
-				return new Response(`Internal Server Error: ${id}`, { status: 500 });
+				return new Response(id, { status: 500 });
 			}
 		}
 	},

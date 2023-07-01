@@ -1,7 +1,9 @@
+import { ZodSchema } from 'zod';
 import * as neon from '@neondatabase/serverless';
 
 type CacheOpts = {
 	key: string,
+	schema: ZodSchema,
 	cacheTtl?: number,
 	expiration?: number,
 	expirationTtl?: number,
@@ -93,15 +95,25 @@ export class CachedDatabaseInterface implements DatabaseInterface {
 		return this._inner.deleteMany(query, params);
 	}
 
-	private getCachedValue(opts: CacheOpts): Promise<any> {
-		return this._cache.get(opts.key, {
+	private async getCachedValue(opts: CacheOpts): Promise<any> {
+		const value = await this._cache.get(opts.key, {
 			cacheTtl: opts.cacheTtl,
 			type: 'json',
 		});
+
+		if (value == null) return null;
+		const parse = opts.schema.safeParse(value);
+		if (!parse.success) throw new Error(`invalid schema provided to cache layer (get):\n${parse.error}`);
+		return value;
 	}
 
-	private putCachedValue(value: any, opts: CacheOpts): Promise<void> {
-		return this._cache.put(opts.key, JSON.stringify(value), {
+	private async putCachedValue(value: any, opts: CacheOpts): Promise<void> {
+		if (value == null) return;
+
+		const parse = opts.schema.safeParse(value);
+		if (!parse.success) throw new Error(`invalid schema provided to cache layer (put):\n${parse.error}`);
+
+		return await this._cache.put(opts.key, JSON.stringify(value), {
 			expiration: opts.expiration,
 			expirationTtl: opts.expirationTtl,
 		});

@@ -48,7 +48,7 @@ export async function post(req: RequestData): Promise<Contact> {
 }
 
 export async function put(req: RequestData): Promise<void> {
-	const contact = await req.getContact();	
+	const contact = await req.getContact();
 	const body = await req.getBody<Put>(putSchema);
 	if (!body.agreeTos) {
 		// TODO: Handle revocation of TOS agreement
