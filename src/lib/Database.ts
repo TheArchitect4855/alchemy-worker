@@ -388,11 +388,12 @@ export default class Database {
 
 	async preferencesSet(contact: string, preferences: Preferences): Promise<void> {
 		await this._interface.writeOne(`
-			UPDATE preferences
+			INSERT INTO preferences (contact, allow_notifications, show_transgender, gender_interests)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (contact) DO UPDATE
 			SET allow_notifications = $2,
 				show_transgender = $3,
 				gender_interests = $4
-			WHERE contact = $1
 			RETURNING contact, allow_notifications, show_transgender, gender_interests
 		`, [
 			contact,
@@ -452,9 +453,13 @@ export default class Database {
 			expirationTtl: 3600,
 		}))!;
 
+		// Ignore conflicts here; there can be duplicates
+		// if the contact was in the review queue, then deleted
+		// their profile, and then creates a new one.
 		await this._interface.writeOne(`
 			INSERT INTO review_queue (kind, item)
 			VALUES ('profile', $1)
+			ON CONFLICT DO NOTHING
 		`, [ row.contact ], null);
 
 		const age = Math.floor(Duration.between(new Date(), new Date(row.dob)).asYears());
