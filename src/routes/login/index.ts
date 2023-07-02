@@ -38,17 +38,8 @@ export async function post(req: RequestData): Promise<{ token: string }> {
 
 	const age = Math.floor(Duration.between(new Date(), contact.dob).asYears());
 	if (age < 18) throw new RequestError(HttpStatus.Forbidden, 'Contact age is under 18');
-
-	const flags = [ contact.isRedlisted, contact.tosAgreed ].map((e) => e ? '1' : '0').join('');
-	const payload = {
-		exp: Math.floor(Date.now() + Duration.days(30).asMilliseconds()),
-		sub: contact.id,
-		phn: contact.phone,
-		dob: contact.dob.getTime(),
-		flg: flags,
-	};
-
-	const token = await jwt.create(payload, req.env);
+	
+	const token = await jwt.createSessionToken(Duration.days(30), contact.id, contact.phone, contact.dob, contact.isRedlisted, contact.tosAgreed, req.env);
 	return { token };
 }
 

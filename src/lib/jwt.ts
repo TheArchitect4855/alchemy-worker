@@ -1,5 +1,6 @@
 import { Env } from "..";
 import { base64Decode, base64DecodeBuffer, base64Encode, base64EncodeBuffer, hexDecodeBuffer } from "./encoding";
+import { Duration } from "./time";
 
 const jwtHeader = {
 	'alg': 'HMAC',
@@ -12,6 +13,28 @@ export async function create(payload: any, env: Env): Promise<string> {
 	const encoder = new TextEncoder();
 	const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(token));
 	return `${token}.${base64EncodeBuffer(new Uint8Array(signature))}`
+}
+
+export async function createSessionToken(
+	validFor: Duration,
+	contactId: string,
+	phone: string,
+	dob: Date,
+	isRedlisted: boolean,
+	tosAgreed: boolean,
+	env: Env,
+): Promise<string> {
+	const flags = [ isRedlisted, tosAgreed ].map((e) => e ? '1' : '0').join('');
+	const payload = {
+		exp: Math.floor(Date.now() + validFor.asMilliseconds()),
+		sub: contactId,
+		phn: phone,
+		dob: dob.getTime(),
+		flg: flags,
+	};
+
+	const token = await create(payload, env);
+	return token;
 }
 
 // There's no need to throw anything from this function, because if something

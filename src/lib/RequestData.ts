@@ -50,6 +50,16 @@ export default class RequestData {
 		return this.req.headers.get(header);
 	}
 
+	async getJwtPayload(): Promise<any> {
+		const authorization = this.getHeader('Authorization');
+		const bearer = 'Bearer ';
+		if (!authorization?.startsWith(bearer)) throw new RequestError(HttpStatus.Unauthorized, 'Invalid Authorization header (must be Bearer)');
+		const token = authorization.substring(bearer.length);
+		const payload = await jwt.verify(token, this.env);
+		if (payload == null || payload.exp < Date.now()) throw new RequestError(HttpStatus.Unauthorized, 'Invalid JWT');
+		return payload;
+	}
+
 	async getPhone(): Promise<string> {
 		const payload = await this.getJwtPayload();
 		return payload.phn;
@@ -69,16 +79,6 @@ export default class RequestData {
 	}
 
 	get searchParams(): URLSearchParams { return this.url.searchParams; }
-
-	private async getJwtPayload(): Promise<any> {
-		const authorization = this.getHeader('Authorization');
-		const bearer = 'Bearer ';
-		if (!authorization?.startsWith(bearer)) throw new RequestError(HttpStatus.Unauthorized, 'Invalid Authorization header (must be Bearer)');
-		const token = authorization.substring(bearer.length);
-		const payload = await jwt.verify(token, this.env);
-		if (payload == null || payload.exp < Date.now()) throw new RequestError(HttpStatus.Unauthorized, 'Invalid JWT');
-		return payload;
-	}
 }
 
 function getZodErrorMessage(e: ZodError): string {

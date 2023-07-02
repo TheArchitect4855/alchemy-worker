@@ -3,13 +3,25 @@ import RequestData from "../../lib/RequestData";
 import { Contact } from "../../lib/database/types";
 import { Duration } from "../../lib/time";
 import * as jwt from '../../lib/jwt';
+import RequestError from "../../error";
+import { HttpStatus } from "../../status";
 
 export async function get(req: RequestData): Promise<{ token: string }> {
-	let contact = await req.getContact();
+	const session = await req.getJwtPayload();
 	const db = await Database.getCachedInterface(req.env);
-	contact = await db.contactGet(contact.id) as Contact;
+	let contact;
+	if (session.sub == null && session.phn != null) {
+		// If there's no contact with the session, let's try to get one.
+		contact = await db.contactGetByPhone(session.phn);
+	} else if (session.sub == null && session.phn == null) {
+		throw new RequestError(HttpStatus.UnprocessableEntity, 'Invalid auth token');
+	} else {
+		contact = await db.contactGet(session.sub);
+	}
+
 	db.close(req.ctx);
 
+	if (contact == null) throw new RequestError(HttpStatus.NotFound, 'Contact does not exist');
 	const flags = [ contact.isRedlisted, contact.tosAgreed ].map((e) => e ? '1' : '0').join('');
 	const payload = {
 		exp: Math.floor(Date.now() + Duration.days(30).asMilliseconds()),

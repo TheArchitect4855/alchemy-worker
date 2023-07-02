@@ -4,8 +4,8 @@ import Database from "../lib/Database";
 import RequestData from "../lib/RequestData";
 import { HttpStatus } from "../status";
 import { Duration } from "../lib/time";
-import { Contact } from "../lib/database/types";
 import { DatabaseError, DatabaseErrorKind } from "../lib/database/dbi";
+import * as jwt from '../lib/jwt';
 
 const postSchema = z.object({
 	dob: z.string().datetime(),
@@ -18,7 +18,7 @@ const putSchema = z.object({
 type Post = z.infer<typeof postSchema>;
 type Put = z.infer<typeof putSchema>;
 
-export async function post(req: RequestData): Promise<Contact> {
+export async function post(req: RequestData): Promise<{ token: string }> {
 	const phone = await req.getPhone();
 	const body = await req.getBody<Post>(postSchema);
 	const dob = new Date(body.dob);
@@ -38,16 +38,11 @@ export async function post(req: RequestData): Promise<Contact> {
 		db.close(req.ctx);
 	}
 
-	return {
-		id,
-		phone,
-		dob,
-		isRedlisted,
-		tosAgreed: false,
-	};
+	const token = await jwt.createSessionToken(Duration.days(30), id, phone, dob, isRedlisted, false, req.env);
+	return { token };
 }
 
-export async function put(req: RequestData): Promise<void> {
+export async function put(req: RequestData): Promise<{ token: string }> {
 	const contact = await req.getContact();
 	const body = await req.getBody<Put>(putSchema);
 	if (!body.agreeTos) {
@@ -58,4 +53,7 @@ export async function put(req: RequestData): Promise<void> {
 	const conn = await Database.getCachedInterface(req.env);
 	await conn.contactSetAgreeTos(contact.id, body.agreeTos);
 	conn.close(req.ctx);
+
+	const token = await jwt.createSessionToken(Duration.days(30), contact.id, contact.phone, contact.dob, contact.isRedlisted, body.agreeTos, req.env);
+	return { token };
 }
