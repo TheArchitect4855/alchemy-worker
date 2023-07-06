@@ -90,11 +90,20 @@ export default class Database {
 	}
 
 	async contactSetAgreeTos(id: string, agreeTos: boolean): Promise<void> {
-		await this._interface.writeOne(`
+		await this._interface.writeOne(
+			`
 			UPDATE contacts
 			SET tos_agreed = $2
 			WHERE id = $1
-		`, [ id, agreeTos ], null);
+			RETURNING id, phone, dob, is_redlisted, tos_agreed
+		`,
+			[id, agreeTos],
+			{
+				key: `contact.${id}`,
+				schema: contactSchema,
+				expirationTtl: 500,
+			}
+		);
 	}
 
 	async exploreGetProfiles(
