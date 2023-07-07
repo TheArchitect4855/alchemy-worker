@@ -47,7 +47,7 @@ export function hexDecodeBuffer(hex: string): Uint8Array {
 
 	const res = new Uint8Array(hex.length / 2);
 	for (let i = 0; i < res.length; i += 1) {
-		const pair = hex.substring(i * 2, i * 2 + 1);
+		const pair = hex.substring(i * 2, i * 2 + 2);
 		res[i] = parseInt(pair, 16);
 	}
 

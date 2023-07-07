@@ -64,8 +64,7 @@ export default {
 			else return respondWith(res);
 		} catch (e: any) {
 			if (e instanceof RequestError) {
-				const err = e as RequestError;
-				return new Response(err.message, { status: err.status });
+				return new Response(e.message, { status: e.status });
 			} else {
 				const id = (Date.now() % 86_400_000).toString(16);
 				console.log(`Internal server error ${id}: ${e}`);

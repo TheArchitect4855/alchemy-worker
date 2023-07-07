@@ -10,7 +10,7 @@ def collect_files(dir: str, files: list[str]) -> None:
 	names = os.listdir(dir)
 	for n in names:
 		p = os.path.join(dir, n)
-		if os.path.isfile(p): files.append(p)
+		if os.path.isfile(p): files.append(p.replace('\\', '/'))
 		else: collect_files(p, files)
 
 def into_module(path: str) -> tuple[str, str]:
