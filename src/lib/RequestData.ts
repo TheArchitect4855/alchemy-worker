@@ -1,4 +1,4 @@
-import { ZodError, ZodType, z } from "zod";
+import { ZodError, ZodType } from "zod";
 import { Env } from "..";
 import RequestError from "../error";
 import { HttpStatus } from "../status";
@@ -63,6 +63,24 @@ export default class RequestData {
 	async getPhone(): Promise<string> {
 		const payload = await this.getJwtPayload();
 		return payload.phn;
+	}
+
+	getSearchParams<T>(schema: ZodType): T {
+		try {
+			const obj: { [key: string]: string } = {};
+			for (const [key, value] of this.searchParams.entries()) {
+				obj[key] = value;
+			}
+
+			return schema.parse(obj);
+		} catch (e) {
+			if (e instanceof ZodError) {
+				const msg = getZodErrorMessage(e);
+				throw new RequestError(HttpStatus.UnprocessableEntity, msg);
+			} else {
+				throw e;
+			}
+		}
 	}
 
 	async uploadBody(bucket: R2Bucket, maxSizeBytes: number): Promise<string> {

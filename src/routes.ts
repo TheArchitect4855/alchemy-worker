@@ -1,6 +1,7 @@
 import { HandlerModule } from './lib/request_types';
 import * as exploreTs from './routes/explore';
 import * as photosTs from './routes/photos';
+import * as logsTs from './routes/logs';
 import * as matchesTs from './routes/matches';
 import * as waitinglistTs from './routes/waitinglist';
 import * as profileReportTs from './routes/profile/report';
@@ -16,6 +17,7 @@ import * as loginIndexTs from './routes/login/index';
 const routes: { [pathname: string]: HandlerModule } = {
 	'/explore': exploreTs,
 	'/photos': photosTs,
+	'/logs': logsTs,
 	'/matches': matchesTs,
 	'/waitinglist': waitinglistTs,
 	'/profile/report': profileReportTs,

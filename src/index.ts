@@ -7,8 +7,10 @@ import { HttpStatus } from './status';
 export interface Env {
 	DATABASE_URL: string,
 	KV_CACHE: KVNamespace,
+	R2_LOGS: R2Bucket,
 	R2_PHOTOS: R2Bucket,
 	JWT_KEY_HEX: string,
+	LOG_SECRET_HEX: string,
 	TWILIO_ACCT_SID: string,
 	TWILIO_AUTH: string,
 	TWILIO_VERIFY_SID: string,

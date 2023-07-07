@@ -1,5 +1,5 @@
 import { Env } from "..";
-import { Match, Profile, Message, Preferences, Contact } from "./database/types";
+import { Match, Profile, Message, Preferences, Contact, Request } from "./database/types";
 import { Duration } from "./time";
 import Location from "./Location";
 import { CachedDatabaseInterface, DatabaseInterface, NeonDatabaseInterface } from "./database/dbi";
@@ -626,6 +626,45 @@ export default class Database {
 			INSERT INTO reports (contact, reason, reporter)
 			VALUES ($1, $2, $3)
 		`, [ contact, reason, reporter ], null);
+	}
+
+	async requestCreate(target: string, kind: 'logs'): Promise<void> {
+		await this._interface.writeOne(`
+			INSERT INTO requests (target, kind)
+			VALUES ($1, $2)
+			ON CONFLICT DO NOTHING
+		`, [ target, kind ], null);
+	}
+
+	async requestGet(target: string, kind: 'logs'): Promise<Request | null> {
+		const row = await this._interface.readOne(`
+			SELECT target, kind, created
+			FROM requests
+			WHERE target = $1
+				AND kind = $2
+		`, [ target, kind ], null);
+
+		if (row == null) return null;
+		return {
+			target: row.target,
+			kind: row.kind,
+			created: row.created,
+		};
+	}
+
+	async requestDelete(target: string, kind: 'logs'): Promise<void> {
+		await this._interface.deleteOne(`
+			DELETE FROM requests
+			WHERE target = $1
+				AND kind = $2
+		`, [ target, kind ], null);
+	}
+
+	async userLogCreate(target: string, key: string, contact: string | null): Promise<void> {
+		await this._interface.writeOne(`
+			INSERT INTO user_logs (target, key, contact)
+			VALUES ($1, $2, $3)
+		`, [ target, key, contact ], null);
 	}
 
 	async waitingListAdd(phone: string, isoCountry: string, adminArea: string, locality: string): Promise<void> {

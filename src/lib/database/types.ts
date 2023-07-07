@@ -38,3 +38,9 @@ export type Profile = {
 	city: string,
 	pronouns: string | null,
 };
+
+export type Request = {
+	target: string,
+	kind: 'logs',
+	created: Date,
+};

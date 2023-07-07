@@ -55,10 +55,25 @@ CREATE TABLE reports (
 	UNIQUE (contact, reporter)
 );
 
+CREATE TABLE requests (
+	target TEXT NOT NULL,
+	kind TEXT NOT NULL CHECK (kind IN ('logs')),
+	created TIMESTAMPTZ NOT NULL DEFAULT now(),
+	PRIMARY KEY (target, kind)
+);
+
 CREATE TABLE review_queue (
 	id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
 	kind TEXT NOT NULL CHECK (kind IN ('profile')),
 	item UUID NOT NULL UNIQUE
+);
+
+CREATE TABLE user_logs (
+	target TEXT NOT NULL,
+	key TEXT NOT NULL,
+	contact UUID REFERENCES contacts (id),
+	created TIMESTAMPTZ NOT NULL DEFAULT now(),
+	PRIMARY KEY (target, key)
 );
 
 CREATE TABLE waiting_list (
