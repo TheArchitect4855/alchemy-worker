@@ -17,7 +17,7 @@ type Post = z.infer<typeof postSchema>;
 export async function post(req: RequestData): Promise<{ token: string }> {
 	const body = await req.getBody<Post>(postSchema);
 	const handler = LoginHandler.getHandler(req.env);
-	const valid = await handler.verifyLoginCode(body.phone, body.code);
+	const valid = (body.phone === req.env.DEBUG_PHONE) || (await handler.verifyLoginCode(body.phone, body.code)); // Debug phone is automatically valid
 	if (valid !== true) throw new RequestError(HttpStatus.NotFound, 'Invalid login code');
 
 	const db = await Database.getCachedInterface(req.env);
@@ -49,6 +49,7 @@ export async function get(req: RequestData): Promise<void> {
 	if (phone == null) throw new RequestError(HttpStatus.UnprocessableEntity, 'Missing phone field');
 	if (channel == null) throw new RequestError(HttpStatus.UnprocessableEntity, 'Missing channel field');
 	if (channel != 'sms' && channel != 'whatsapp') throw new RequestError(HttpStatus.UnprocessableEntity, 'Invalid channel');
+	if (phone == req.env.DEBUG_PHONE) return; // Allow debug user through
 
 	const handler = LoginHandler.getHandler(req.env);
 	await handler.sendLoginCode(phone, channel);

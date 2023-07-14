@@ -6,6 +6,7 @@ import { HttpStatus } from './status';
 
 export interface Env {
 	DATABASE_URL: string,
+	DEBUG_PHONE: string,
 	KV_CACHE: KVNamespace,
 	R2_LOGS: R2Bucket,
 	R2_PHOTOS: R2Bucket,
