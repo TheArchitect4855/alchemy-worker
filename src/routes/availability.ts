@@ -25,6 +25,13 @@ export async function get(req: RequestData): Promise<Availability> {
 	if (isNaN(latitude)) throw new RequestError(HttpStatus.UnprocessableEntity, 'Invalid latitude');
 	if (isNaN(longitude)) throw new RequestError(HttpStatus.UnprocessableEntity, 'Invalid longitude');
 
+	try {
+		const contact = await req.getContact();
+		if (contact.phone === req.env.DEBUG_PHONE) return { available: true }; // Always allow debug user
+	} catch {
+		// No problem
+	}
+
 	const available = availableAt.some((e) => e.location.distanceToKm(latitude, longitude) <= e.radiusKm);
 	return { available };
 }
