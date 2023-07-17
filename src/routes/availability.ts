@@ -26,8 +26,8 @@ export async function get(req: RequestData): Promise<Availability> {
 	if (isNaN(longitude)) throw new RequestError(HttpStatus.UnprocessableEntity, 'Invalid longitude');
 
 	try {
-		const contact = await req.getContact();
-		if (contact.phone === req.env.DEBUG_PHONE) return { available: true }; // Always allow debug user
+		const phone = await req.getPhone();
+		if (phone === req.env.DEBUG_PHONE) return { available: true }; // Always allow debug user
 	} catch {
 		// No problem
 	}
