@@ -4,7 +4,7 @@ import Database from "../lib/Database";
 import RequestData from "../lib/RequestData";
 import { HttpStatus } from "../status";
 
-const maxPhotoCount = 10;
+export const maxPhotoCount = 10;
 const maxPhotoSize = 1_500_000;
 
 export async function get(req: RequestData): Promise<BinaryResponse> {

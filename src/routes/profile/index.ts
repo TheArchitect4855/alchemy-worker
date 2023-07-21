@@ -6,16 +6,19 @@ import Database from "../../lib/Database";
 import Location from "../../lib/Location";
 import { Profile } from "../../lib/database/types";
 import { DatabaseError, DatabaseErrorKind } from "../../lib/database/dbi";
+import { maxPhotoCount } from "../photos";
+
+const maxCount = 25;
 
 const postSchema = z.object({
 	name: z.string().min(1, 'name must not be blank').max(128, 'name must be < 128 characters'),
 	bio: z.string().max(1024, 'bio must be < 1024 characters'),
 	gender: z.string().min(1, 'gender must not be blank').max(16, 'gender must be < 16 characters'),
 	isTransgender: z.boolean(),
-	photoUrls: z.array(z.string().url('photo URLs must be URLs')),
-	relationshipInterests: z.array(z.enum([ 'flings', 'friends', 'romance' ])).min(1, 'must include a relationship interest'),
-	neurodiversities: z.array(z.string().min(1, 'cannot include blank neurodiversities').max(32, 'neurodiviersities must be < 32 characters')),
-	interests: z.array(z.string().min(1, 'cannot include blank interests').max(32, 'interests must be < 32 characters')),
+	photoUrls: z.array(z.string().url('photo URLs must be URLs')).max(maxPhotoCount),
+	relationshipInterests: z.array(z.enum([ 'flings', 'friends', 'romance' ])).min(1, 'must include a relationship interest').max(3),
+	neurodiversities: z.array(z.string().min(1, 'cannot include blank neurodiversities').max(32, 'neurodiviersities must be < 32 characters')).max(maxCount),
+	interests: z.array(z.string().min(1, 'cannot include blank interests').max(32, 'interests must be < 32 characters')).max(maxCount),
 	pronouns: z.string().max(32, 'pronouns must be < 32 characters').nullable(),
 	locLat: z.number().gte(-360).lte(360),
 	locLon: z.number().gte(-360).lte(360),
@@ -28,9 +31,9 @@ const putSchema = z.object({
 	name: z.string().min(1, 'name must not be blank').max(128, 'name must be < 128 characters'),
 	bio: z.string().max(1024, 'bio must be < 1024 characters'),
 	gender: z.string().min(1, 'gender must not be blank').max(16, 'gender must be < 16 characters'),
-	relationshipInterests: z.array(z.enum([ 'flings', 'friends', 'romance' ])).min(1, 'must include a relationship interest'),
-	neurodiversities: z.array(z.string().min(1, 'cannot include blank neurodiversities').max(32, 'neurodiviersities must be < 32 characters')),
-	interests: z.array(z.string().min(1, 'cannot include blank interests').max(32, 'interests must be < 32 characters')),
+	relationshipInterests: z.array(z.enum([ 'flings', 'friends', 'romance' ])).min(1, 'must include a relationship interest').max(3),
+	neurodiversities: z.array(z.string().min(1, 'cannot include blank neurodiversities').max(32, 'neurodiviersities must be < 32 characters')).max(maxCount),
+	interests: z.array(z.string().min(1, 'cannot include blank interests').max(32, 'interests must be < 32 characters')).max(maxCount),
 	pronouns: z.string().max(32, 'pronouns must be < 32 characters').nullable(),
 });
 
