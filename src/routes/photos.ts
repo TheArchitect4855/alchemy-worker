@@ -4,6 +4,7 @@ import Database from "../lib/Database";
 import RequestData from "../lib/RequestData";
 import { HttpStatus } from "../status";
 
+const maxPhotoCount = 10;
 const maxPhotoSize = 1_500_000;
 
 export async function get(req: RequestData): Promise<BinaryResponse> {
@@ -23,6 +24,7 @@ export async function post(req: RequestData): Promise<{ url: string }> {
 	const db = await Database.getCachedInterface(req.env);
 	const profile = await db.profileGet(contact.id);
 	if (profile == null) throw new RequestError(HttpStatus.Forbidden, 'Contact has no profile');
+	if (profile.photoUrls.length >= maxPhotoCount) throw new RequestError(HttpStatus.Forbidden, 'Maximum photos reached');
 
 	const key = await req.uploadBody(req.env.R2_PHOTOS, maxPhotoSize);
 	const url = getUrl(req.url, key);
