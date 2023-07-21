@@ -199,6 +199,50 @@ export default class Database {
 		`, [ contact, likes ], null);
 	}
 
+	async matchGet(contact: string, likes: string): Promise<Match | null> {
+		const row = await this._interface.readOne(`
+			SELECT COUNT(*) = 2 AS is_match
+			FROM likes
+			WHERE (contact = $1 AND likes = $2)
+				OR (contact = $2 AND likes = $1)
+		`, [ contact, likes ], null);
+
+		if (row?.is_match !== true) return null;
+
+		const profile = (await this.profileGet(likes))!;
+		const lastMessageRow = await this._interface.readOne(`
+			SELECT id, from_contact, to_contact, sent_at
+			FROM messages
+			WHERE (from_contact = $1 AND to_contact = $2)
+				OR (from_contact = $2 AND to_contact = $1)
+			ORDER BY id DESC
+			LIMIT 1
+		`, [ contact, likes ], null);
+
+		let lastMessage: Message | null = null;
+		if (lastMessageRow != null) {
+			lastMessage = {
+				id: lastMessageRow.id,
+				from: lastMessageRow.from_contact == contact ? 0 : 1,
+				content: lastMessageRow.content,
+				sentAt: lastMessageRow.sent_at,
+			};
+		}
+
+		const numUnread = await this._interface.readOne(`
+			SELECT COUNT(*) AS n
+			FROM messages
+			WHERE from_contact = $2 AND to_contact = $1
+				AND read_at IS NULL
+		`, [ contact, likes ], null);
+
+		return {
+			profile,
+			lastMessage: lastMessage,
+			numUnread: parseInt(numUnread?.n) ?? 0,
+		};
+	}
+
 	async matchesGet(contact: string): Promise<Match[]> {
 		const contacts = await this._interface.readMany(`
 			SELECT l2.contact

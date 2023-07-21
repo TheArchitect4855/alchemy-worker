@@ -11,13 +11,16 @@ const bodySchema = z.object({
 
 type Body = z.infer<typeof bodySchema>;
 
-export async function post(req: RequestData): Promise<void> {
+export async function post(req: RequestData): Promise<{ match: Match | null }> {
 	const contact = await req.getContact();
 	const body = await req.getBody<Body>(bodySchema);
 
 	const db = await Database.getCachedInterface(req.env);
 	await db.like(contact.id, body.target);
+	
+	const match = await db.matchGet(contact.id, body.target);
 	db.close(req.ctx);
+	return { match };
 }
 
 export async function del(req: RequestData): Promise<{ matches: Match[] }> {
