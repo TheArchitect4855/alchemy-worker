@@ -552,16 +552,16 @@ export default class Database {
 		const age = Math.floor(Duration.between(new Date(), new Date(row.dob)).asYears());
 		return {
 			uid: row.contact,
-			name: row.name,
+			name: row.name.trim(),
 			age,
-			bio: row.bio,
-			gender: row.gender,
+			bio: row.bio.trim(),
+			gender: row.gender.trim(),
 			photoUrls: row.photo_urls,
 			relationshipInterests: row.relationship_interests,
-			neurodiversities: row.neurodiversities,
+			neurodiversities: row.neurodiversities.map((e: string) => e.trim()),
 			interests: row.interests,
-			city: row.last_location_name,
-			pronouns: row.pronouns,
+			city: row.last_location_name.trim(),
+			pronouns: row.pronouns.trim(),
 		};
 	}
 
