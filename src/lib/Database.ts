@@ -132,9 +132,10 @@ export default class Database {
 			FROM likes
 			WHERE contact = $1
 				AND liked_at > now() - INTERVAL '${likesMaxAge}'
-		`, [ contact ])).map((e) => `'${e.likes}'`);
+		`, [ contact ]));
 
-		likes.push(`'${contact}'`); // Push our contact ID to likes so we don't get included in our explore feed
+		const matches = await this.getMatchContactIds(contact);
+		const exclude = [ contact, ...likes, ...matches ].map((e) => `'${e}'`);
 
 		// TODO: Actually profile and/or A/B test this to see
 		// if it's faster to query contact IDs and then profiles,
@@ -144,7 +145,7 @@ export default class Database {
 			FROM profiles pr
 			INNER JOIN contacts co
 				ON co.id = pr.contact
-			WHERE pr.contact NOT IN (${likes.join(',')})
+			WHERE pr.contact NOT IN (${exclude.join(',')})
 				AND (
 					(pr.gender = 'man' AND 'men' IN (${genderInterests}))
 					OR (pr.gender = 'woman' AND 'women' IN (${genderInterests}))
@@ -244,16 +245,8 @@ export default class Database {
 	}
 
 	async matchesGet(contact: string): Promise<Match[]> {
-		const contacts = await this._interface.readMany(`
-			SELECT l2.contact
-			FROM likes l1
-			INNER JOIN likes l2
-				ON l2.contact = l1.likes
-				AND l2.likes = l1.contact
-			WHERE l1.contact = $1
-		`, [ contact ]);
-
-		const profiles = await Promise.all(contacts.map((e) => this.profileGet(e.contact)));
+		const contacts = await this.getMatchContactIds(contact);
+		const profiles = await Promise.all(contacts.map((e) => this.profileGet(e)));
 		const lastMessages = await Promise.all(contacts.map((e) => this._interface.readOne(`
 			SELECT id, from_contact, to_contact, content, sent_at
 			FROM messages
@@ -261,14 +254,14 @@ export default class Database {
 				OR (from_contact = $2 AND to_contact = $1)
 			ORDER BY id DESC
 			LIMIT 1
-		`, [ contact, e.contact ], null)));
+		`, [ contact, e ], null)));
 
 		const numUnread = await Promise.all(contacts.map((e) => this._interface.readOne(`
 			SELECT COUNT(*) AS n
 			FROM messages
 			WHERE from_contact = $2 AND to_contact = $1
 				AND read_at IS NULL
-		`, [ contact, e.contact ], null)));
+		`, [ contact, e ], null)));
 
 		const matches = [];
 		for(let i = 0; i < profiles.length; i += 1) {
@@ -720,6 +713,19 @@ export default class Database {
 				administrative_area = $3,
 				locality = $4
 		`, [ phone, isoCountry, adminArea, locality ], null);
+	}
+
+	private async getMatchContactIds(contact: string): Promise<string[]> {
+		const contacts = await this._interface.readMany(`
+			SELECT l2.contact
+			FROM likes l1
+			INNER JOIN likes l2
+				ON l2.contact = l1.likes
+				AND l2.likes = l1.contact
+			WHERE l1.contact = $1
+		`, [ contact ]);
+
+		return contacts.map((e) => e.contact);
 	}
 
 	static async getInterface(env: Env): Promise<Database> {
