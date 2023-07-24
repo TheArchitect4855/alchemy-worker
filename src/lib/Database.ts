@@ -132,7 +132,7 @@ export default class Database {
 			FROM likes
 			WHERE contact = $1
 				AND liked_at > now() - INTERVAL '${likesMaxAge}'
-		`, [ contact ]));
+		`, [ contact ])).map((e) => e.likes);
 
 		const matches = await this.getMatchContactIds(contact);
 		const exclude = [ contact, ...likes, ...matches ].map((e) => `'${e}'`);
