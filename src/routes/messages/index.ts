@@ -57,15 +57,15 @@ export async function post(req: RequestData): Promise<Message> {
 
 	const res = await db.messageCreate(contact.id, body.to, body.message);
 	const preferences = await db.preferencesGet(body.to);
-	if (preferences.allowNotifications) await sendNewMessageNotification(req.env, body.to);
+	if (preferences.allowNotifications) await sendNewMessageNotification(req.env, contact.id, body.to, res);
 
 	db.close(req.ctx);
 	return res;
 }
 
-async function sendNewMessageNotification(env: Env, contactId: string): Promise<void> {
+async function sendNewMessageNotification(env: Env, sender: string, recipient: string, message: Message): Promise<void> {
 	const messaging = new Messaging(env);
-	const fcmToken = await messaging.getCachedFcmToken(contactId);
+	const fcmToken = await messaging.getCachedFcmToken(recipient);
 	if (fcmToken == null) return;
 	try {
 		await messaging.send({
@@ -74,13 +74,18 @@ async function sendNewMessageNotification(env: Env, contactId: string): Promise<
 				title: 'You received a new message',
 				body: 'Don\'t keep them waiting!',
 			},
+			data: {
+				kind: 'match-message',
+				id: message.id.toString(),
+				content: message.content,
+				sentAt: message.sentAt.toISOString(),
+				sender,
+			},
 		});
-
-		console.log(`Sent new message notification to ${contactId} (${fcmToken})`);
 	} catch (e: any) {
 		if (e instanceof MessagingError && e.status == 'INVALID_ARGUMENT') {
 			// FCM token is invalid
-			messaging.deleteCachedFcmToken(contactId);
+			messaging.deleteCachedFcmToken(recipient);
 		} else throw e;
 	}
 }
