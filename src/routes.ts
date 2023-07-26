@@ -6,8 +6,9 @@ import * as matchesTs from './routes/matches';
 import * as waitinglistTs from './routes/waitinglist';
 import * as profileReportTs from './routes/profile/report';
 import * as profileIndexTs from './routes/profile/index';
+import * as messagesIdTs from './routes/messages/id';
+import * as messagesIndexTs from './routes/messages/index';
 import * as availabilityTs from './routes/availability';
-import * as messagesTs from './routes/messages';
 import * as likesTs from './routes/likes';
 import * as contactTs from './routes/contact';
 import * as preferencesTs from './routes/preferences';
@@ -22,8 +23,9 @@ const routes: { [pathname: string]: HandlerModule } = {
 	'/waitinglist': waitinglistTs,
 	'/profile/report': profileReportTs,
 	'/profile': profileIndexTs,
+	'/messages/id': messagesIdTs,
+	'/messages': messagesIndexTs,
 	'/availability': availabilityTs,
-	'/messages': messagesTs,
 	'/likes': likesTs,
 	'/contact': contactTs,
 	'/preferences': preferencesTs,
