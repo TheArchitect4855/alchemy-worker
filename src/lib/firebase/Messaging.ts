@@ -19,11 +19,15 @@ export default class Messaging {
 		this._tokenPayload = null;
 	}
 
+	deleteCachedFcmToken(contactId: string): Promise<void> {
+		return Messaging.deleteCachedFcmToken(this._env, contactId);
+	}
+
 	getCachedFcmToken(contactId: string): Promise<string | null> {
 		return Messaging.getCachedFcmToken(this._env, contactId);
 	}
 
-	async send(message: Message, opts?: { validateOnly?: boolean }): Promise<any> {
+	async send(message: Message, opts?: { validateOnly?: boolean }): Promise<void> {
 		const token = await this.getToken();
 		const body = {
 			validate_only: opts?.validateOnly ?? false,
@@ -40,7 +44,6 @@ export default class Messaging {
 
 		const res = await req.json() as any;
 		if (res.error) throw MessagingError.fromErrorResponse(res);
-		return res;
 	}
 
 	private async getToken(): Promise<string> {

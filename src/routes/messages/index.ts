@@ -4,7 +4,8 @@ import Database from "../../lib/Database";
 import RequestData from "../../lib/RequestData";
 import { Message } from "../../lib/database/types";
 import { HttpStatus } from "../../status";
-import Messaging from "../../lib/firebase/Messaging";
+import Messaging, { MessagingError } from "../../lib/firebase/Messaging";
+import { Env } from "../..";
 
 // TODO: Use durable objects + web sockets
 // for real-time chat.
@@ -54,22 +55,32 @@ export async function post(req: RequestData): Promise<Message> {
 	const canMessage = await db.canMessageContact(contact.id, body.to);
 	if (!canMessage) throw new RequestError(HttpStatus.Forbidden);
 
-	const preferences = await db.preferencesGet(contact.id);
-	if (preferences.allowNotifications) {
-		const messaging = new Messaging(req.env);
-		const fcmToken = await messaging.getCachedFcmToken(contact.id);
-		if (fcmToken != null) {
-			messaging.send({
-				token: fcmToken,
-				notification: {
-					title: 'You received a new message',
-					body: 'Don\'t keep them waiting!',
-				},
-			});
-		}
-	}
-
 	const res = await db.messageCreate(contact.id, body.to, body.message);
+	const preferences = await db.preferencesGet(body.to);
+	if (preferences.allowNotifications) await sendNewMessageNotification(req.env, body.to);
+
 	db.close(req.ctx);
 	return res;
+}
+
+async function sendNewMessageNotification(env: Env, contactId: string): Promise<void> {
+	const messaging = new Messaging(env);
+	const fcmToken = await messaging.getCachedFcmToken(contactId);
+	if (fcmToken == null) return;
+	try {
+		await messaging.send({
+			token: fcmToken,
+			notification: {
+				title: 'You received a new message',
+				body: 'Don\'t keep them waiting!',
+			},
+		});
+
+		console.log(`Sent new message notification to ${contactId} (${fcmToken})`);
+	} catch (e: any) {
+		if (e instanceof MessagingError && e.status == 'INVALID_ARGUMENT') {
+			// FCM token is invalid
+			messaging.deleteCachedFcmToken(contactId);
+		} else throw e;
+	}
 }
