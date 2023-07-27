@@ -118,11 +118,7 @@ export default class Database {
 			LEFT JOIN preferences pr
 				ON pr.contact = co.id
 			WHERE co.id = $1
-		`, [ contact ], {
-			key: `explore.preferences.${contact}`,
-			schema: explorePreferencesSchema,
-			expirationTtl: 300,
-		});
+		`, [ contact ], null);
 
 		if (preferences == null) throw new Error('invalid contact ID');
 		const genderInterests = preferences.gender_interests?.map((e: string) => `'${e}'`).join(',') ?? '\'men\',\'nonbinary\',\'women\'';
@@ -137,6 +133,14 @@ export default class Database {
 		const matches = await this.getMatchContactIds(contact);
 		const exclude = [ contact, ...likes, ...matches ].map((e) => `'${e}'`);
 
+		// Update location before getting potential matches
+		await this._interface.writeOne(`
+			UPDATE profiles
+			SET last_location = ST_Point($3, $2, 4326),
+				last_location_name = $1
+			WHERE contact = $4
+		`, [ locationName, location.latitude, location.longitude, contact ], null);
+
 		// TODO: Actually profile and/or A/B test this to see
 		// if it's faster to query contact IDs and then profiles,
 		// or to just query all the profiles at once.
@@ -149,7 +153,7 @@ export default class Database {
 				AND (
 					(pr.gender = 'man' AND 'men' IN (${genderInterests}))
 					OR (pr.gender = 'woman' AND 'women' IN (${genderInterests}))
-					OR 'nonbinary' IN (${genderInterests})
+					OR (pr.gender != 'man' AND pr.gender != 'woman' AND 'nonbinary' IN (${genderInterests}))
 				) AND (NOT pr.is_transgender OR $1)
 				AND pr.is_visible = true
 				AND ST_DWithin(pr.last_location, ST_Point($3, $2, 4326), $4)
@@ -162,12 +166,6 @@ export default class Database {
 		]);
 
 		const profiles = await Promise.all(contacts.map((e) => this.profileGet(e.id) as Promise<Profile>));
-		await this._interface.writeOne(`
-			UPDATE profiles
-			SET last_location_name = $1
-			WHERE contact = $2
-		`, [ locationName, contact ], null);
-
 		return profiles;
 	}
 
