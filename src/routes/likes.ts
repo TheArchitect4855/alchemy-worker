@@ -2,8 +2,11 @@ import { z } from "zod";
 import RequestData from "../lib/RequestData";
 import RequestError from "../error";
 import { HttpStatus } from "../status";
-import { Match, Profile } from "../lib/database/types";
+import { Match, NotificationConfig, Profile } from "../lib/database/types";
 import Database from "../lib/Database";
+import Messaging from "../lib/firebase/Messaging";
+
+const matchNotificationType = 'new-match';
 
 const bodySchema = z.object({
 	target: z.string().uuid(),
@@ -19,6 +22,8 @@ export async function post(req: RequestData): Promise<{ match: Match | null }> {
 	await db.like(contact.id, body.target);
 	
 	const match = await db.matchGet(contact.id, body.target);
+	if (match != null) await sendMatchNotification(body.target, new Messaging(req.env, db));
+
 	db.close(req.ctx);
 	return { match };
 }
@@ -35,4 +40,20 @@ export async function del(req: RequestData): Promise<{ matches: Match[] }> {
 	db.close(req.ctx);
 
 	return { matches: res };
+}
+
+async function sendMatchNotification(to: string, messaging: Messaging): Promise<void> {
+	const shouldSendNotification = await messaging.shouldSendNotifications(to, matchNotificationType);
+	if (!shouldSendNotification) return;
+	
+	const cfg = await messaging.getNotificationConfigFor(to) as NotificationConfig;
+	await messaging.send(to, {
+		token: cfg.token,
+		notification: {
+			title: 'Someone matched with you!',
+			body: 'See who it is!',
+		},
+	});
+
+	await messaging.addPendingNotificationType(to, matchNotificationType);
 }

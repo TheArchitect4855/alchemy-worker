@@ -2,7 +2,7 @@ import { z } from "zod";
 import RequestError from "../../error";
 import Database from "../../lib/Database";
 import RequestData from "../../lib/RequestData";
-import { Message, Preferences } from "../../lib/database/types";
+import { Message, NotificationConfig, Preferences } from "../../lib/database/types";
 import { HttpStatus } from "../../status";
 import Messaging, { MessagingError } from "../../lib/firebase/Messaging";
 import { Env } from "../..";
@@ -69,44 +69,33 @@ export async function post(req: RequestData): Promise<Message> {
 	if (!canMessage) throw new RequestError(HttpStatus.Forbidden);
 
 	const res = await db.messageCreate(contact.id, body.to, body.message);
-	await sendNewMessageNotification(req.env, contact.id, body.to, res, db);
+	await sendNewMessageNotification(contact.id, body.to, res, new Messaging(req.env, db));
 	db.close(req.ctx);
 	return res;
 }
 
-async function sendNewMessageNotification(env: Env, sender: string, recipient: string, message: Message, db: Database): Promise<void> {
-	const messaging = new Messaging(env);
-	const cfg = await db.notificationConfigGet(recipient);
-	if (cfg == null) return;
+async function sendNewMessageNotification(sender: string, recipient: string, message: Message, messaging: Messaging): Promise<void> {
+	const canSendNotification = await messaging.canSendNotifications(recipient);
+	if (!canSendNotification) return;
 
-	const isMatchMessagePending = cfg.pendingNotificationTypes.indexOf(matchMessageNotificationType) >= 0;
-	const prefs = await db.preferencesGet(recipient);
-	const notification = (prefs.allowNotifications && !isMatchMessagePending) ? {
+	const shouldSendNotification = await messaging.shouldSendNotifications(recipient, matchMessageNotificationType);
+	const notification = shouldSendNotification ? {
 		title: 'You received a new message!',
 		body: 'Don\'t keep them waiting!',
 	} : undefined;
 
-	try {
-		await messaging.send({
-			token: cfg.token,
-			notification,
-			data: {
-				kind: matchMessageNotificationType,
-				id: message.id.toString(),
-				content: message.content,
-				sentAt: message.sentAt.toISOString(),
-				sender,
-			},
-		});
-	} catch (e: any) {
-		if (e instanceof MessagingError && e.status == 'INVALID_ARGUMENT') {
-			// FCM token is invalid
-			await db.notificationConfigDelete(recipient);
-		} else throw e;
-	}
+	const cfg = await messaging.getNotificationConfigFor(recipient) as NotificationConfig;
+	await messaging.send(recipient, {
+		token: cfg.token,
+		notification,
+		data: {
+			kind: matchMessageNotificationType,
+			id: message.id.toString(),
+			content: message.content,
+			sentAt: message.sentAt.toISOString(),
+			sender,
+		},
+	});
 
-	if (!isMatchMessagePending) {
-		cfg.pendingNotificationTypes.push(matchMessageNotificationType);
-		await db.notificationConfigUpdate(recipient, cfg.token, cfg.pendingNotificationTypes);
-	}
+	if (shouldSendNotification) await messaging.addPendingNotificationType(recipient, matchMessageNotificationType);
 }
