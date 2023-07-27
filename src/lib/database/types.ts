@@ -19,6 +19,13 @@ export type Message = {
 	sentAt: Date,
 };
 
+export type NotificationConfig = {
+	contact: string,
+	token: string,
+	tokenLastUpdated: Date,
+	pendingNotificationTypes: string[],
+};
+
 export type Preferences = {
 	allowNotifications: boolean,
 	showTransgender: boolean,

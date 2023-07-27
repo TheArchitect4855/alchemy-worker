@@ -25,6 +25,13 @@ CREATE TABLE messages (
 	PRIMARY KEY (to_contact, from_contact, id)
 );
 
+CREATE TABLE notification_config (
+	contact UUID NOT NULL PRIMARY KEY REFERENCES contacts (id),
+	token TEXT NOT NULL,
+	token_last_updated TIMESTAMPTZ NOT NULL,
+	pending_notification_types TEXT[] NOT NULL
+);
+
 CREATE TABLE preferences (
 	contact UUID NOT NULL PRIMARY KEY REFERENCES contacts (id),
 	allow_notifications BOOLEAN NOT NULL DEFAULT TRUE,

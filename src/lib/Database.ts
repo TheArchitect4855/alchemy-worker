@@ -1,5 +1,5 @@
 import { Env } from "..";
-import { Match, Profile, Message, Preferences, Contact, Request } from "./database/types";
+import { Match, Profile, Message, Preferences, Contact, Request, NotificationConfig } from "./database/types";
 import { Duration } from "./time";
 import Location from "./Location";
 import { CachedDatabaseInterface, DatabaseInterface, NeonDatabaseInterface } from "./database/dbi";
@@ -361,6 +361,44 @@ export default class Database {
 			WHERE (from_contact = $1 AND to_contact = $2)
 				OR (from_contact = $2 AND to_contact = $1)
 		`, [ a, b ]);
+	}
+
+	async notificationConfigGet(contact: string): Promise<NotificationConfig | null> {
+		const row = await this._interface.readOne(`
+			SELECT token, token_last_updated, pending_notification_types
+			FROM notification_config
+			WHERE contact = $1
+		`, [ contact ], null);
+
+		if (row == null) return null;
+		return {
+			contact,
+			token: row.token,
+			tokenLastUpdated: row.token_last_updated,
+			pendingNotificationTypes: row.pending_notification_types,
+		};
+	}
+
+	async notificationConfigUpdate(contact: string, token: string, pendingNotificationTypes: string[]): Promise<void> {
+		await this._interface.writeOne(`
+			INSERT INTO notification_config (
+				contact, token, token_last_updated, pending_notification_types
+			) VALUES ($1, $2, now(), $3)
+			ON CONFLICT (contact) DO UPDATE
+			SET token = $2,
+				token_last_updated = CASE notification_config.token
+					WHEN $2 THEN now()
+					ELSE notification_config.token_last_updated
+				END,
+				pending_notification_types = $3
+		`, [ contact, token, pendingNotificationTypes ], null);
+	}
+
+	async notificationConfigDelete(contact: string): Promise<void> {
+		await this._interface.deleteOne(`
+			DELETE FROM notification_config
+			WHERE contact = $1
+		`, [ contact ], null);
 	}
 
 	async photoAdd(contact: string, url: string, dob: Date): Promise<void> {

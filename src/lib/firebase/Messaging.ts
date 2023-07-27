@@ -19,14 +19,6 @@ export default class Messaging {
 		this._tokenPayload = null;
 	}
 
-	deleteCachedFcmToken(contactId: string): Promise<void> {
-		return Messaging.deleteCachedFcmToken(this._env, contactId);
-	}
-
-	getCachedFcmToken(contactId: string): Promise<string | null> {
-		return Messaging.getCachedFcmToken(this._env, contactId);
-	}
-
 	async send(message: Message, opts?: { validateOnly?: boolean }): Promise<void> {
 		const token = await this.getToken();
 		const body = {
@@ -65,23 +57,6 @@ export default class Messaging {
 
 		return token;
 	}
-
-	static async cacheFcmToken(env: Env, contactId: string, token: string): Promise<void> {
-		const key = getFcmTokenCacheKey(contactId);
-		await env.KV_CACHE.put(key, token, {
-			expirationTtl: 5259600, // 2 months
-		});
-	}
-
-	static async deleteCachedFcmToken(env: Env, contactId: string): Promise<void> {
-		const key = getFcmTokenCacheKey(contactId);
-		await env.KV_CACHE.delete(key);
-	}
-
-	static async getCachedFcmToken(env: Env, contactId: string): Promise<string | null> {
-		const key = getFcmTokenCacheKey(contactId);
-		return await env.KV_CACHE.get(key);
-	}
 }
 
 export class MessagingError {
@@ -105,8 +80,4 @@ export class MessagingError {
 		const err = response.error;
 		return new MessagingError(err.code, err.message, err.status, err.details);
 	}
-}
-
-function getFcmTokenCacheKey(contactId: string): string {
-	return `fcm-token-${contactId}`;
 }
