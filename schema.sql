@@ -64,10 +64,12 @@ CREATE TABLE reports (
 
 CREATE TABLE requests (
 	target TEXT NOT NULL,
-	kind TEXT NOT NULL CHECK (kind IN ('logs')),
+	kind TEXT NOT NULL REFERENCES request_kinds (kind),
 	created TIMESTAMPTZ NOT NULL DEFAULT now(),
 	PRIMARY KEY (target, kind)
 );
+
+CREATE TABLE request_kinds (kind TEXT NOT NULL PRIMARY KEY);
 
 CREATE TABLE review_queue (
 	id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
