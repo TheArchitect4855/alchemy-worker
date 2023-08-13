@@ -33,7 +33,7 @@ export async function get(req: RequestData): Promise<Response> {
 		response = new Response(right, init);
 	}
 
-	cacheResponse.headers.set('Cache-Control', 'public,max-age=60,must-revalidate,immutable');
+	cacheResponse.headers.set('Cache-Control', 'public,max-age=86400,must-revalidate,immutable');
 	await caches.default.put(req.url, cacheResponse);
 	console.dir('CACHE MISS');
 	return response;
