@@ -18,16 +18,6 @@ export interface Env {
 	TWILIO_VERIFY_SID: string,
 }
 
-export class BinaryResponse {
-	readonly data: ReadableStream<any>;
-	readonly mimeType: string;
-
-	constructor(data: ReadableStream<any>, mimeType: string) {
-		this.data = data;
-		this.mimeType = mimeType;
-	}
-}
-
 export default {
 	async fetch(
 		request: Request,
@@ -79,11 +69,7 @@ export default {
 
 function respondWith(body: any): Response {
 	if (body === undefined) return new Response();
-	if (body instanceof BinaryResponse) return new Response(body.data, {
-		headers: {
-			'Content-Type': body.mimeType,
-		},
-	});
+	if (body instanceof Response) return body;
 
 	return Response.json(body, {
 		headers: {

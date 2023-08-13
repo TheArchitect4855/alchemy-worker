@@ -1,4 +1,3 @@
-import { BinaryResponse } from "..";
 import RequestError from "../error";
 import Database from "../lib/Database";
 import RequestData from "../lib/RequestData";
@@ -7,14 +6,37 @@ import { HttpStatus } from "../status";
 export const maxPhotoCount = 10;
 const maxPhotoSize = 1_500_000;
 
-export async function get(req: RequestData): Promise<BinaryResponse> {
+export async function get(req: RequestData): Promise<Response> {
+	const cachedPhoto = await caches.default.match(req.url);
+	if (cachedPhoto) {
+		console.log('CACHE HIT');
+		return cachedPhoto;
+	}
+
 	const key = req.searchParams.get('key');
 	if (key == null) throw new RequestError(HttpStatus.UnprocessableEntity, 'Missing key');
 
+	let cacheResponse: Response;
+	let response: Response;
 	const obj = await req.env.R2_PHOTOS.get(key);
-	if (obj == null) throw new RequestError(HttpStatus.NotFound);
+	if (obj == null) {
+		cacheResponse = response = new Response(null, { status: HttpStatus.NotFound });
+	} else {
+		const init = {
+			headers: {
+				'Content-Type': 'image',
+			}
+		};
 
-	return new BinaryResponse(obj.body, 'image');
+		const [ left, right ] = obj.body.tee();
+		cacheResponse = new Response(left, init);
+		response = new Response(right, init);
+	}
+
+	cacheResponse.headers.set('Cache-Control', 'public,max-age=60,must-revalidate,immutable');
+	await caches.default.put(req.url, cacheResponse);
+	console.dir('CACHE MISS');
+	return response;
 }
 
 export async function post(req: RequestData): Promise<{ url: string }> {
