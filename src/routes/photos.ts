@@ -7,20 +7,17 @@ export const maxPhotoCount = 10;
 const maxPhotoSize = 1_500_000;
 
 export async function get(req: RequestData): Promise<Response> {
-	const cachedPhoto = await caches.default.match(req.url);
-	if (cachedPhoto) {
-		console.log('CACHE HIT');
-		return cachedPhoto;
-	}
-
 	const key = req.searchParams.get('key');
 	if (key == null) throw new RequestError(HttpStatus.UnprocessableEntity, 'Missing key');
 
-	let cacheResponse: Response;
+	const cache = await caches.open('alchemy-photos');
+	const cachedPhoto = await cache.match(req.url);
+	if (cachedPhoto) return cachedPhoto;
+
 	let response: Response;
 	const obj = await req.env.R2_PHOTOS.get(key);
 	if (obj == null) {
-		cacheResponse = response = new Response(null, { status: HttpStatus.NotFound });
+		response = new Response(null, { status: HttpStatus.NotFound });
 	} else {
 		const init = {
 			headers: {
@@ -28,14 +25,11 @@ export async function get(req: RequestData): Promise<Response> {
 			}
 		};
 
-		const [ left, right ] = obj.body.tee();
-		cacheResponse = new Response(left, init);
-		response = new Response(right, init);
+		response = new Response(obj.body, init);
 	}
 
-	cacheResponse.headers.set('Cache-Control', 'public,max-age=86400,must-revalidate,immutable');
-	await caches.default.put(req.url, cacheResponse);
-	console.dir('CACHE MISS');
+	response.headers.set('Cache-Control', 'public,max-age=86400');
+	req.ctx.waitUntil(cache.put(req.url, response.clone()));
 	return response;
 }
 
