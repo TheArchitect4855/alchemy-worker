@@ -19,7 +19,7 @@ export default class Database {
 	}
 
 	async canMessageContact(from: string, to: string): Promise<boolean> {
-		const ord = [ from, to ];
+		const ord = [from, to];
 		ord.sort();
 
 		const row = await this._interface.readOne(`
@@ -30,7 +30,7 @@ export default class Database {
 				AND l1.likes = l2.contact
 			WHERE l1.contact = $1
 				AND l1.likes = $2
-		`, [ from, to ], {
+		`, [from, to], {
 			key: `canMessage.${ord.join('.')}`,
 			schema: canMessageContactSchema,
 			expirationTtl: 300,
@@ -44,7 +44,7 @@ export default class Database {
 			INSERT INTO contacts (phone, dob, is_redlisted)
 			VALUES ($1, $2, $3)
 			RETURNING id, phone, dob, is_redlisted, tos_agreed
-		`, [ phone, dob, isRedlisted ], null);
+		`, [phone, dob, isRedlisted], null);
 
 		return query!.id;
 	}
@@ -54,7 +54,7 @@ export default class Database {
 			SELECT id, phone, dob, is_redlisted, tos_agreed
 			FROM contacts
 			WHERE id = $1
-		`, [ id ], {
+		`, [id], {
 			key: `contact.${id}`,
 			schema: contactSchema,
 			expirationTtl: 500,
@@ -76,7 +76,7 @@ export default class Database {
 			SELECT id, dob, is_redlisted, tos_agreed
 			FROM contacts
 			WHERE phone = $1
-		`, [ phone ], null);
+		`, [phone], null);
 
 		if (row == null) return null;
 
@@ -118,7 +118,7 @@ export default class Database {
 			LEFT JOIN preferences pr
 				ON pr.contact = co.id
 			WHERE co.id = $1
-		`, [ contact ], null);
+		`, [contact], null);
 
 		if (preferences == null) throw new Error('invalid contact ID');
 		const genderInterests = preferences.gender_interests?.map((e: string) => `'${e}'`).join(',') ?? '\'men\',\'nonbinary\',\'women\'';
@@ -128,10 +128,10 @@ export default class Database {
 			FROM likes
 			WHERE contact = $1
 				AND liked_at > now() - INTERVAL '${likesMaxAge}'
-		`, [ contact ])).map((e) => e.likes);
+		`, [contact])).map((e) => e.likes);
 
 		const matches = await this.getMatchContactIds(contact);
-		const exclude = [ contact, ...likes, ...matches ].map((e) => `'${e}'`);
+		const exclude = [contact, ...likes, ...matches].map((e) => `'${e}'`);
 
 		// Update location before getting potential matches
 		await this._interface.writeOne(`
@@ -139,7 +139,7 @@ export default class Database {
 			SET last_location = ST_Point($3, $2, 4326),
 				last_location_name = $1
 			WHERE contact = $4
-		`, [ locationName, location.latitude, location.longitude, contact ], null);
+		`, [locationName, location.latitude, location.longitude, contact], null);
 
 		// TODO: Actually profile and/or A/B test this to see
 		// if it's faster to query contact IDs and then profiles,
@@ -175,7 +175,7 @@ export default class Database {
 			VALUES ($1, $2)
 			ON CONFLICT (contact, likes) DO UPDATE
 			SET liked_at = now()
-		`, [ contact, likes ], null);
+		`, [contact, likes], null);
 	}
 
 	async likesGet(contact: string): Promise<Profile[]> {
@@ -184,7 +184,7 @@ export default class Database {
 			FROM likes
 			WHERE contact = $1
 				AND liked_at > now() + INTERVAL '${likesMaxAge}'
-		`, [ contact ]);
+		`, [contact]);
 
 		const profiles = await Promise.all(contacts.map((e) => this.profileGet(e.contact) as Promise<Profile>));
 		return profiles;
@@ -195,7 +195,7 @@ export default class Database {
 			DELETE FROM likes
 			WHERE contact = $1
 				AND likes = $2
-		`, [ contact, likes ], null);
+		`, [contact, likes], null);
 	}
 
 	async matchGet(contact: string, likes: string): Promise<Match | null> {
@@ -204,7 +204,7 @@ export default class Database {
 			FROM likes
 			WHERE (contact = $1 AND likes = $2)
 				OR (contact = $2 AND likes = $1)
-		`, [ contact, likes ], null);
+		`, [contact, likes], null);
 
 		if (row?.is_match !== true) return null;
 
@@ -216,7 +216,7 @@ export default class Database {
 				OR (from_contact = $2 AND to_contact = $1)
 			ORDER BY id DESC
 			LIMIT 1
-		`, [ contact, likes ], null);
+		`, [contact, likes], null);
 
 		let lastMessage: Message | null = null;
 		if (lastMessageRow != null) {
@@ -233,7 +233,7 @@ export default class Database {
 			FROM messages
 			WHERE from_contact = $2 AND to_contact = $1
 				AND read_at IS NULL
-		`, [ contact, likes ], null);
+		`, [contact, likes], null);
 
 		return {
 			profile,
@@ -252,17 +252,17 @@ export default class Database {
 				OR (from_contact = $2 AND to_contact = $1)
 			ORDER BY id DESC
 			LIMIT 1
-		`, [ contact, e ], null)));
+		`, [contact, e], null)));
 
 		const numUnread = await Promise.all(contacts.map((e) => this._interface.readOne(`
 			SELECT COUNT(*) AS n
 			FROM messages
 			WHERE from_contact = $2 AND to_contact = $1
 				AND read_at IS NULL
-		`, [ contact, e ], null)));
+		`, [contact, e], null)));
 
 		const matches = [];
-		for(let i = 0; i < profiles.length; i += 1) {
+		for (let i = 0; i < profiles.length; i += 1) {
 			if (profiles[i] == null) continue;
 
 			let lastMessage: Message | null = null;
@@ -291,7 +291,7 @@ export default class Database {
 			INSERT INTO messages (from_contact, to_contact, content)
 			VALUES ($1, $2, $3)
 			RETURNING id, sent_at
-		`, [ from, to, content ], null))!;
+		`, [from, to, content], null))!;
 
 		return {
 			id: row.id,
@@ -309,7 +309,7 @@ export default class Database {
 				OR (from_contact = $2 AND to_contact = $1)
 			ORDER BY id DESC
 			LIMIT $3
-		`, [ localContact, remoteContact, limit ]);
+		`, [localContact, remoteContact, limit]);
 
 		return query.map((e) => ({
 			id: e.id,
@@ -328,7 +328,7 @@ export default class Database {
 				AND id < $4
 			ORDER BY id DESC
 			LIMIT $3
-		`, [ localContact, remoteContact, limit, maxId ]);
+		`, [localContact, remoteContact, limit, maxId]);
 
 		return query.map((e) => ({
 			id: e.id,
@@ -358,7 +358,7 @@ export default class Database {
 			DELETE FROM messages
 			WHERE (from_contact = $1 AND to_contact = $2)
 				OR (from_contact = $2 AND to_contact = $1)
-		`, [ a, b ]);
+		`, [a, b]);
 	}
 
 	async notificationConfigGet(contact: string): Promise<NotificationConfig | null> {
@@ -366,7 +366,7 @@ export default class Database {
 			SELECT token, token_last_updated, pending_notification_types
 			FROM notification_config
 			WHERE contact = $1
-		`, [ contact ], null);
+		`, [contact], null);
 
 		if (row == null) return null;
 		return {
@@ -389,14 +389,14 @@ export default class Database {
 					ELSE notification_config.token_last_updated
 				END,
 				pending_notification_types = $3
-		`, [ contact, token, pendingNotificationTypes ], null);
+		`, [contact, token, pendingNotificationTypes], null);
 	}
 
 	async notificationConfigDelete(contact: string): Promise<void> {
 		await this._interface.deleteOne(`
 			DELETE FROM notification_config
 			WHERE contact = $1
-		`, [ contact ], null);
+		`, [contact], null);
 	}
 
 	async photoAdd(contact: string, url: string, dob: Date): Promise<void> {
@@ -409,7 +409,7 @@ export default class Database {
 				gender, photo_urls, relationship_interests,
 				neurodiversities, interests, last_location_name,
 				pronouns
-		`, [ [url], contact, dob ], {
+		`, [[url], contact, dob], {
 			key: `profile.${contact}`,
 			schema: profileSchema,
 			expirationTtl: 3600,
@@ -419,7 +419,7 @@ export default class Database {
 			INSERT INTO review_queue (kind, item)
 			VALUES ('profile', $1)
 			ON CONFLICT (item) DO NOTHING
-		`, [ contact ], null);
+		`, [contact], null);
 	}
 
 	async photoRemove(contact: string, url: string, dob: Date): Promise<void> {
@@ -431,7 +431,7 @@ export default class Database {
 				gender, photo_urls, relationship_interests,
 				neurodiversities, interests, last_location_name,
 				pronouns
-		`, [ url, contact, dob ], {
+		`, [url, contact, dob], {
 			key: `profile.${contact}`,
 			schema: profileSchema,
 			expirationTtl: 3600,
@@ -449,7 +449,7 @@ export default class Database {
 			SELECT contact, allow_notifications, show_transgender, gender_interests
 			FROM preferences
 			WHERE contact = $1
-		`, [ contact ], cacheOpts);
+		`, [contact], cacheOpts);
 
 		if (row == null) {
 			row = (await this._interface.writeOne(`
@@ -458,7 +458,7 @@ export default class Database {
 					gender_interests
 				) VALUES ($1, true, true, '{ "men", "nonbinary", "women" }')
 				RETURNING contact, allow_notifications, show_transgender, gender_interests
-			`, [ contact ], cacheOpts))!;
+			`, [contact], cacheOpts))!;
 		}
 
 		return {
@@ -542,7 +542,7 @@ export default class Database {
 			INSERT INTO review_queue (kind, item)
 			VALUES ('profile', $1)
 			ON CONFLICT DO NOTHING
-		`, [ row.contact ], null);
+		`, [row.contact], null);
 
 		const age = Math.floor(Duration.between(new Date(), new Date(row.dob)).asYears());
 		return {
@@ -570,27 +570,27 @@ export default class Database {
 			INNER JOIN profiles pr
 				ON co.id = pr.contact
 			WHERE co.id = $1
-		`, [ contact ], {
+		`, [contact], {
 			key: `profile.${contact}`,
 			schema: profileSchema,
 			expirationTtl: 3600,
 		});
 
 		if (row == null) return null;
-		
+
 		const age = Math.floor(Duration.between(new Date(), new Date(row.dob)).asYears());
 		return {
 			uid: row.contact,
-			name: row.name.trim(),
+			name: row.name?.trim(),
 			age,
-			bio: row.bio.trim(),
-			gender: row.gender.trim(),
+			bio: row.bio?.trim(),
+			gender: row.gender?.trim(),
 			photoUrls: row.photo_urls,
 			relationshipInterests: row.relationship_interests,
 			neurodiversities: row.neurodiversities.map((e: string) => e.trim()),
 			interests: row.interests,
-			city: row.last_location_name.trim(),
-			pronouns: row.pronouns.trim(),
+			city: row.last_location_name?.trim(),
+			pronouns: row.pronouns?.trim(),
 		};
 	}
 
@@ -642,7 +642,7 @@ export default class Database {
 			INSERT INTO review_queue (kind, item)
 			VALUES ('profile', $1)
 			ON CONFLICT DO NOTHING
-		`, [ row.contact ], null);
+		`, [row.contact], null);
 
 		const age = Math.floor(Duration.between(new Date(), new Date(row.dob)).asYears());
 		return {
@@ -665,30 +665,30 @@ export default class Database {
 			DELETE FROM likes
 			WHERE contact = $1
 				OR likes = $1
-		`, [ contact ]);
+		`, [contact]);
 
 		await this._interface.deleteMany(`
 			DELETE FROM messages
 			WHERE from_contact = $1
 				OR to_contact = $1
-		`, [ contact ]);
+		`, [contact]);
 
 		await this._interface.deleteMany(`
 			DELETE FROM review_queue
 			WHERE kind = 'profile'
 				AND item = $1
-		`, [ contact ]);
+		`, [contact]);
 
 		await this._interface.deleteOne(`
 			DELETE FROM review_queue
 			WHERE kind = 'profile'
 				AND item = $1
-		`, [ contact ], null);
+		`, [contact], null);
 
 		await this._interface.deleteOne(`
 			DELETE FROM profiles
 			WHERE contact = $1
-		`, [ contact ], {
+		`, [contact], {
 			key: `profile.${contact}`,
 			schema: profileSchema,
 		});
@@ -698,7 +698,7 @@ export default class Database {
 		await this._interface.writeOne(`
 			INSERT INTO reports (contact, reason, reporter)
 			VALUES ($1, $2, $3)
-		`, [ contact, reason, reporter ], null);
+		`, [contact, reason, reporter], null);
 	}
 
 	async requestCreate(target: string, kind: 'logs'): Promise<void> {
@@ -706,7 +706,7 @@ export default class Database {
 			INSERT INTO requests (target, kind)
 			VALUES ($1, $2)
 			ON CONFLICT DO NOTHING
-		`, [ target, kind ], null);
+		`, [target, kind], null);
 	}
 
 	async requestGet(target: string, kind: 'logs'): Promise<Request | null> {
@@ -715,7 +715,7 @@ export default class Database {
 			FROM requests
 			WHERE target = $1
 				AND kind = $2
-		`, [ target, kind ], null);
+		`, [target, kind], null);
 
 		if (row == null) return null;
 		return {
@@ -730,14 +730,14 @@ export default class Database {
 			DELETE FROM requests
 			WHERE target = $1
 				AND kind = $2
-		`, [ target, kind ], null);
+		`, [target, kind], null);
 	}
 
 	async userLogCreate(target: string, key: string, contact: string | null): Promise<void> {
 		await this._interface.writeOne(`
 			INSERT INTO user_logs (target, key, contact)
 			VALUES ($1, $2, $3)
-		`, [ target, key, contact ], null);
+		`, [target, key, contact], null);
 	}
 
 	async waitingListAdd(phone: string, isoCountry: string, adminArea: string, locality: string): Promise<void> {
@@ -748,7 +748,7 @@ export default class Database {
 			SET iso_country = $2,
 				administrative_area = $3,
 				locality = $4
-		`, [ phone, isoCountry, adminArea, locality ], null);
+		`, [phone, isoCountry, adminArea, locality], null);
 	}
 
 	private async getMatchContactIds(contact: string): Promise<string[]> {
@@ -759,7 +759,7 @@ export default class Database {
 				ON l2.contact = l1.likes
 				AND l2.likes = l1.contact
 			WHERE l1.contact = $1
-		`, [ contact ]);
+		`, [contact]);
 
 		return contacts.map((e) => e.contact);
 	}
