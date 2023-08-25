@@ -21,6 +21,7 @@ export async function get(req: RequestData): Promise<Response> {
 	} else {
 		const init = {
 			headers: {
+				'Access-Control-Allow-Origin': '*',
 				'Content-Type': 'image',
 			}
 		};
