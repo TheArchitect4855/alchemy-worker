@@ -87,7 +87,7 @@ function getCorsHeaders(method: string, headers: Headers): HeaderDict {
 		'Access-Control-Allow-Headers': '*',
 		'Access-Control-Allow-Methods': 'POST, GET, PUT, DELETE, OPTIONS',
 		'Access-Control-Allow-Origin': o,
-		// 'Access-Control-Max-Age': '86400',
+		'Access-Control-Max-Age': '86400',
 	};
 
 	return { 'Access-Control-Allow-Origin': o };
@@ -96,7 +96,6 @@ function getCorsHeaders(method: string, headers: Headers): HeaderDict {
 function respondWith(body: any, headers: HeaderDict): Response {
 	if (body === undefined) return new Response(null, { headers });
 	if (body instanceof Response) {
-		for (const k in headers) body.headers.set(k, headers[k]);
 		return body;
 	}
 
