@@ -84,7 +84,7 @@ function getCorsHeaders(method: string, headers: Headers): HeaderDict {
 
 	if (method == 'OPTIONS') return {
 		'Access-Control-Allow-Credentials': 'true',
-		'Access-Control-Allow-Headers': '*',
+		'Access-Control-Allow-Headers': headers.get('access-control-request-headers') ?? '*',
 		'Access-Control-Allow-Methods': 'POST, GET, PUT, DELETE, OPTIONS',
 		'Access-Control-Allow-Origin': o,
 		'Access-Control-Max-Age': '86400',
