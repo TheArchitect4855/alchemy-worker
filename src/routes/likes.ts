@@ -41,7 +41,7 @@ export async function del(req: RequestData): Promise<{ matches: Match[] }> {
 }
 
 async function sendMatchNotification(to: string, messaging: Messaging): Promise<void> {
-	const shouldSendNotification = await messaging.shouldSendNotifications(to, matchNotificationType);
+	const shouldSendNotification = await messaging.shouldSendNotifications(to);
 	if (!shouldSendNotification) return;
 
 	const cfg = await messaging.getNotificationConfigFor(to) as NotificationConfig;
@@ -53,5 +53,5 @@ async function sendMatchNotification(to: string, messaging: Messaging): Promise<
 		},
 	});
 
-	await messaging.addPendingNotificationType(to, matchNotificationType);
+	await messaging.updateLastNotificationSent(to);
 }

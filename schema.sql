@@ -49,7 +49,7 @@ CREATE TABLE notification_config (
 	contact UUID NOT NULL PRIMARY KEY REFERENCES contacts (id),
 	token TEXT NOT NULL,
 	token_last_updated TIMESTAMPTZ NOT NULL,
-	pending_notification_types TEXT[] NOT NULL
+	last_notification_at TIMESTAMPTZ
 );
 
 CREATE TABLE preferences (

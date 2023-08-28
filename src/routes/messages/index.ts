@@ -41,13 +41,6 @@ export async function get(req: RequestData): Promise<{ messages: Message[] }> {
 		messages = await db.messagesGetOlder(contact.id, target, lim, maxId);
 	} else {
 		messages = await db.messagesGet(contact.id, target, lim);
-
-		const notificationConfig = await db.notificationConfigGet(contact.id);
-		const split = notificationConfig?.pendingNotificationTypes.indexOf(matchMessageNotificationType);
-		if (notificationConfig != null && split != undefined && split >= 0) {
-			notificationConfig.pendingNotificationTypes.splice(split, 1);
-			await db.notificationConfigUpdate(contact.id, notificationConfig.token, notificationConfig.pendingNotificationTypes);
-		}
 	}
 
 	await db.messagesMarkRead(messages.map((e) => e.id));
@@ -75,7 +68,7 @@ async function sendNewMessageNotification(sender: string, recipient: string, mes
 	const canSendNotification = await messaging.canSendNotifications(recipient);
 	if (!canSendNotification) return;
 
-	const shouldSendNotification = await messaging.shouldSendNotifications(recipient, matchMessageNotificationType);
+	const shouldSendNotification = await messaging.shouldSendNotifications(recipient);
 	const notification = shouldSendNotification ? {
 		title: 'You received a new message!',
 		body: 'Don\'t keep them waiting!',
@@ -94,5 +87,5 @@ async function sendNewMessageNotification(sender: string, recipient: string, mes
 		},
 	});
 
-	if (shouldSendNotification) await messaging.addPendingNotificationType(recipient, matchMessageNotificationType);
+	if (shouldSendNotification) await messaging.updateLastNotificationSent(recipient);
 }

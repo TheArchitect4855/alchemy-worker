@@ -401,7 +401,7 @@ export default class Database {
 
 	async notificationConfigGet(contact: string): Promise<NotificationConfig | null> {
 		const row = await this._interface.readOne(`
-			SELECT token, token_last_updated, pending_notification_types
+			SELECT token, token_last_updated, last_notification_at
 			FROM notification_config
 			WHERE contact = $1
 		`, [contact], null);
@@ -410,24 +410,31 @@ export default class Database {
 		return {
 			contact,
 			token: row.token,
-			tokenLastUpdated: row.token_last_updated,
-			pendingNotificationTypes: row.pending_notification_types,
+			tokenLastUpdated: new Date(row.token_last_updated),
+			lastNotificationAt: new Date(row.last_notification_at),
 		};
 	}
 
-	async notificationConfigUpdate(contact: string, token: string, pendingNotificationTypes: string[]): Promise<void> {
+	async notificationConfigUpdate(contact: string, token: string): Promise<void> {
 		await this._interface.writeOne(`
 			INSERT INTO notification_config (
-				contact, token, token_last_updated, pending_notification_types
-			) VALUES ($1, $2, now(), $3)
+				contact, token, token_last_updated
+			) VALUES ($1, $2, now())
 			ON CONFLICT (contact) DO UPDATE
 			SET token = $2,
 				token_last_updated = CASE notification_config.token
 					WHEN $2 THEN now()
 					ELSE notification_config.token_last_updated
-				END,
-				pending_notification_types = $3
-		`, [contact, token, pendingNotificationTypes], null);
+				END
+		`, [contact, token], null);
+	}
+
+	async notificationConfigUpdateLastSent(contact: string): Promise<void> {
+		await this._interface.writeOne(`
+			UPDATE notification_config
+			SET last_notification_at = now()
+			WHERE contact = $1
+		`, [contact], null);
 	}
 
 	async notificationConfigDelete(contact: string): Promise<void> {

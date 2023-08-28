@@ -29,7 +29,7 @@ export type NotificationConfig = {
 	contact: string,
 	token: string,
 	tokenLastUpdated: Date,
-	pendingNotificationTypes: string[],
+	lastNotificationAt: Date | null,
 };
 
 export type Preferences = {

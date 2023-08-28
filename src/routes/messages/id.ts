@@ -13,5 +13,5 @@ export async function put(req: RequestData): Promise<void> {
 	const contact = await req.getContact();
 
 	const db = req.env.cachedDatabase;
-	await db.notificationConfigUpdate(contact.id, body.fcmToken, []);
+	await db.notificationConfigUpdate(contact.id, body.fcmToken);
 }

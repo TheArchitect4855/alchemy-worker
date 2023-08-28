@@ -6,6 +6,7 @@ import { getToken } from "./auth";
 import { Message, ServiceAccount, StringMap, TokenPayload } from './types';
 
 const authTokenCacheKey = 'firebase-token-messaging';
+const notificationCooldownMillis = 3e5;
 
 export default class Messaging {
 	private readonly _env: Env;
@@ -27,13 +28,6 @@ export default class Messaging {
 		this._allowNotificationsCache = {};
 	}
 
-	async addPendingNotificationType(contact: string, type: string): Promise<void> {
-		const cfg = await this.getNotificationConfigFor(contact);
-		if (cfg == null) throw new MessagingError('no config for contact');
-		cfg.pendingNotificationTypes.push(type);
-		await this._db.notificationConfigUpdate(contact, cfg.token, cfg.pendingNotificationTypes);
-	}
-
 	async canSendNotifications(to: string): Promise<boolean> {
 		if (this._configCache[to] === undefined) {
 			const cfg = await this._db.notificationConfigGet(to);
@@ -52,13 +46,13 @@ export default class Messaging {
 		return this._configCache[contact];
 	}
 
-	async shouldSendNotifications(to: string, type: string): Promise<boolean> {
+	async shouldSendNotifications(to: string): Promise<boolean> {
 		const canSend = await this.canSendNotifications(to);
 		if (!canSend) return false;
 
 		const config = this._configCache[to] as NotificationConfig;
-		const idx = config.pendingNotificationTypes.indexOf(type);
-		if (idx >= 0) return false;
+		const lastNotificationAt = config.lastNotificationAt;
+		if (lastNotificationAt != null && Date.now() - lastNotificationAt.getTime() < notificationCooldownMillis) return false;
 
 		if (this._allowNotificationsCache[to] === undefined) {
 			const prefs = await this._db.preferencesGet(to);
@@ -90,6 +84,10 @@ export default class Messaging {
 		}
 
 		if (res.error) throw MessagingError.fromErrorResponse(res);
+	}
+
+	updateLastNotificationSent(to: string): Promise<void> {
+		return this._db.notificationConfigUpdateLastSent(to);
 	}
 
 	private async getToken(): Promise<string> {
