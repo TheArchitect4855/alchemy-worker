@@ -14,10 +14,6 @@ export default class Database {
 		this._interface = dbi;
 	}
 
-	close(ctx: ExecutionContext): void {
-		this._interface.close(ctx);
-	}
-
 	async apiLogsCreate(
 		method: string,
 		url: string,
@@ -804,31 +800,5 @@ export default class Database {
 		`, [contact]);
 
 		return contacts.map((e) => e.contact);
-	}
-
-	private static s_currentDbi: DatabaseInterface | null = null;
-
-	static closeCurrentInterface(ctx: ExecutionContext): void {
-		if (this.s_currentDbi == null) return;
-		this.s_currentDbi.close(ctx);
-		this.s_currentDbi = null;
-	}
-
-	static async getInterface(env: Env): Promise<Database> {
-		const dbi = await this.getRawDbi(env);
-		return new Database(dbi);
-	}
-
-	static async getCachedInterface(env: Env): Promise<Database> {
-		const dbi = await this.getRawDbi(env);
-		return new Database(new CachedDatabaseInterface(env.KV_CACHE, dbi));
-	}
-
-	private static async getRawDbi(env: Env): Promise<DatabaseInterface> {
-		if (this.s_currentDbi != null) return this.s_currentDbi;
-
-		const dbi = await NeonDatabaseInterface.connect(env.DATABASE_URL);
-		this.s_currentDbi = dbi;
-		return dbi;
 	}
 }

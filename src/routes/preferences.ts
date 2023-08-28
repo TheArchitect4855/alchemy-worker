@@ -11,7 +11,7 @@ const putSchema = z.object({
 
 export async function get(req: RequestData): Promise<Preferences> {
 	const contact = await req.getContact();
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	const res = await db.preferencesGet(contact.id);
 
 	if (res == null) return {
@@ -27,6 +27,6 @@ export async function put(req: RequestData): Promise<void> {
 	const body = await req.getBody<Preferences>(putSchema);
 	const contact = await req.getContact();
 
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	await db.preferencesSet(contact.id, body);
 }

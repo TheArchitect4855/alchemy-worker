@@ -30,7 +30,7 @@ export async function get(req: RequestData): Promise<{ messages: Message[] }> {
 	const lim = limit ? parseInt(limit) : 10;
 	if (isNaN(lim)) throw new RequestError(HttpStatus.UnprocessableEntity, 'Invalid limit');
 
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	let messages;
 	if (olderThan) {
 		const maxId = parseInt(olderThan);
@@ -62,7 +62,7 @@ export async function post(req: RequestData): Promise<Message> {
 	// 1. messages aren't cached anyways, and
 	// 2. we want to make sure we have the target user's
 	//    latest preferences re: notifications.
-	const db = await Database.getInterface(req.env);
+	const db = req.env.rawDatabase;
 	const canMessage = await db.canMessageContact(contact.id, body.to);
 	if (!canMessage) throw new RequestError(HttpStatus.Forbidden);
 

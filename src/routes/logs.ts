@@ -35,7 +35,7 @@ export async function post(req: RequestData): Promise<void> {
 		contact = null;
 	}
 
-	const db = await Database.getInterface(req.env);
+	const db = req.env.rawDatabase;
 	await db.userLogCreate(id, logKey, contact?.id ?? null);
 }
 
@@ -48,7 +48,7 @@ export async function get(req: RequestData): Promise<LogStatus> {
 
 	await validate(id, signature, timestamp, req.env.LOG_SECRET_HEX);
 
-	const db = await Database.getInterface(req.env);
+	const db = req.env.rawDatabase;
 	const logRequest = await db.requestGet(id, "logs");
 
 	return {

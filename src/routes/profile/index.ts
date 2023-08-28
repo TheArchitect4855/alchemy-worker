@@ -42,7 +42,7 @@ type Put = z.infer<typeof putSchema>;
 export async function post(req: RequestData): Promise<Profile> {
 	const body = await req.getBody<Post>(postSchema);
 	const contact = await req.getContact();
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	try {
 		const profile = await db.profileCreate(
 			contact.id,
@@ -72,7 +72,7 @@ export async function post(req: RequestData): Promise<Profile> {
 
 export async function get(req: RequestData): Promise<Profile> {
 	const contact = await req.getContact();
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	const profile = await db.profileGet(contact.id);
 
 	if (profile == null) throw new RequestError(HttpStatus.NotFound, 'No profile for contact');
@@ -83,7 +83,7 @@ export async function put(req: RequestData): Promise<Profile> {
 	const contact = await req.getContact();
 	const body = await req.getBody<Put>(putSchema);
 
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	let profile = await db.profileGet(contact.id);
 	if (profile == null) throw new RequestError(HttpStatus.Forbidden, 'Contact has no profile');
 
@@ -104,6 +104,6 @@ export async function put(req: RequestData): Promise<Profile> {
 
 export async function del(req: RequestData): Promise<void> {
 	const contact = await req.getContact();
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	await db.profileDelete(contact.id);
 }

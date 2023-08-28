@@ -5,6 +5,7 @@ import { HandlerFn } from './lib/request_types';
 import { HttpStatus } from './status';
 import Database from './lib/Database';
 import { getPayload as getJwtPayload } from './lib/jwt';
+import { CachedDatabaseInterface, DatabaseInterface, NeonDatabaseInterface } from './lib/database/dbi';
 
 const origin = 'https://web.usealchemy.app';
 type HeaderDict = { [header: string]: string };
@@ -21,6 +22,8 @@ export interface Env {
 	TWILIO_ACCT_SID: string,
 	TWILIO_AUTH: string,
 	TWILIO_VERIFY_SID: string,
+	cachedDatabase: Database,
+	rawDatabase: Database,
 }
 
 export default {
@@ -37,9 +40,13 @@ export default {
 		let pathname = url.pathname;
 		if (pathname.length > 1 && pathname.endsWith('/')) pathname = pathname.substring(0, pathname.length - 1);
 
-		const db = await Database.getInterface(env);
 		const headers = getCorsHeaders(request.method, request.headers);
+		let dbi: NeonDatabaseInterface | null = null;
 		try {
+			dbi = await NeonDatabaseInterface.connect(env.DATABASE_URL);
+			env.cachedDatabase = new Database(new CachedDatabaseInterface(env.KV_CACHE, dbi));
+			env.rawDatabase = new Database(dbi);
+
 			const handler = routes[pathname];
 			if (handler == undefined) throw new RequestError(HttpStatus.NotFound);
 
@@ -66,22 +73,22 @@ export default {
 			let res = fn(new RequestData(request, url, env, ctx));
 			if (res instanceof Promise) res = await res;
 
-			await createApiLog(db, request, 200, null);
+			await createApiLog(env.rawDatabase, request, 200, null);
 			return respondWith(res, headers);
 		} catch (e: any) {
 			if (e instanceof RequestError) {
-				await createApiLog(db, request, e.status, e.message);
+				if (env.rawDatabase) await createApiLog(env.rawDatabase, request, e.status, e.message);
 				return new Response(e.message, { headers, status: e.status });
 			} else {
 				const id = (Date.now() % 86_400_000).toString(16);
 				const message = `Internal server error ${id}: ${e}`;
 				console.log(message);
 				console.error(e);
-				await createApiLog(db, request, 500, message);
+				if (env.rawDatabase) await createApiLog(env.rawDatabase, request, 500, message);
 				return new Response(id, { headers, status: 500 });
 			}
 		} finally {
-			Database.closeCurrentInterface(ctx);
+			if (dbi != null) ctx.waitUntil(dbi.close());
 		}
 	},
 };

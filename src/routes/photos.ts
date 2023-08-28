@@ -38,7 +38,7 @@ export async function post(req: RequestData): Promise<{ url: string }> {
 	if (!req.getHeader('Content-Type')?.startsWith('image/')) throw new RequestError(HttpStatus.UnprocessableEntity, 'Only images can be uploaded as photos');
 
 	const contact = await req.getContact();
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	const profile = await db.profileGet(contact.id);
 	if (profile == null) throw new RequestError(HttpStatus.Forbidden, 'Contact has no profile');
 	if (profile.photoUrls.length >= maxPhotoCount) throw new RequestError(HttpStatus.Forbidden, 'Maximum photos reached');
@@ -55,7 +55,7 @@ export async function del(req: RequestData): Promise<void> {
 	if (key == null) throw new RequestError(HttpStatus.UnprocessableEntity, 'Missing key');
 
 	const contact = await req.getContact();
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	const profile = await db.profileGet(contact.id);
 	if (profile == null) throw new RequestError(HttpStatus.Forbidden, 'Contact has no profile');
 

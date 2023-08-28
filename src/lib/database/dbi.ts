@@ -36,7 +36,6 @@ export class DatabaseError {
 
 // *many are not cacheable
 export interface DatabaseInterface {
-	close(ctx: ExecutionContext): void;
 	readOne(query: string, params: any[], cacheOpts: CacheOpts | null): Promise<Row | null>;
 	readMany(query: string, params: any[]): Promise<Row[]>;
 	writeOne(query: string, params: any[], cacheOpts: CacheOpts | null): Promise<Row | null>;
@@ -52,10 +51,6 @@ export class CachedDatabaseInterface implements DatabaseInterface {
 	constructor(cache: KVNamespace, inner: DatabaseInterface) {
 		this._cache = cache;
 		this._inner = inner;
-	}
-
-	close(ctx: ExecutionContext): void {
-		this._inner.close(ctx);
 	}
 
 	async readOne(query: string, params: any[], cacheOpts: CacheOpts | null): Promise<Row | null> {
@@ -127,8 +122,8 @@ export class NeonDatabaseInterface implements DatabaseInterface {
 		this._client = client;
 	}
 
-	close(ctx: ExecutionContext): void {
-		ctx.waitUntil(this._client.end());
+	close(): Promise<void> {
+		return this._client.end();
 	}
 
 	async readOne(query: string, params: any[], _cacheOpts: CacheOpts | null): Promise<Row | null> {

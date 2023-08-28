@@ -7,7 +7,7 @@ import { HttpStatus } from "../../status";
 
 export async function get(req: RequestData): Promise<{ token: string }> {
 	const session = await req.getJwtPayload();
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	let contact;
 	if (session.sub == null && session.phn == null) {
 		throw new RequestError(

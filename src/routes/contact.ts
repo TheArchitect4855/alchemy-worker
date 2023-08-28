@@ -24,7 +24,7 @@ export async function post(req: RequestData): Promise<{ token: string }> {
 	const dob = new Date(body.dob);
 	const age = Math.floor(Duration.between(new Date(), dob).asYears());
 	const isRedlisted = age < 18;
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	let id;
 	try {
 		id = await db.contactCreate(phone, dob, isRedlisted);
@@ -48,7 +48,7 @@ export async function put(req: RequestData): Promise<{ token: string }> {
 		throw new RequestError(HttpStatus.NotImplemented);
 	}
 
-	const conn = await Database.getCachedInterface(req.env);
+	const conn = req.env.cachedDatabase;
 	await conn.contactSetAgreeTos(contact.id, body.agreeTos);
 	const token = await jwt.createSessionToken(Duration.days(30), contact.id, contact.phone, contact.dob, contact.isRedlisted, body.agreeTos, req.env);
 	return { token };

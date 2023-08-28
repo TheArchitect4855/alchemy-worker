@@ -20,7 +20,7 @@ export async function post(req: RequestData): Promise<{ token: string }> {
 	const valid = (body.phone === req.env.DEBUG_PHONE) || (await handler.verifyLoginCode(body.phone, body.code)); // Debug phone is automatically valid
 	if (valid !== true) throw new RequestError(HttpStatus.NotFound, 'Invalid login code');
 
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	const contact = await db.contactGetByPhone(body.phone);
 
 	if (contact == null) {

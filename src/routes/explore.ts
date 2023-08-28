@@ -20,7 +20,7 @@ export async function get(req: RequestData): Promise<{ profiles: Profile[] }> {
 
 	const contact = await req.getContact();
 	const location = new Location(latitude, longitude);
-	const conn = await Database.getCachedInterface(req.env);
+	const conn = req.env.cachedDatabase;
 	const profiles = await conn.exploreGetProfiles(contact.id, location, locName, 30_000); // TODO: Make distance a setting
 	return { profiles };
 }

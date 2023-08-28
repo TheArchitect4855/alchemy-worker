@@ -18,7 +18,7 @@ export async function post(req: RequestData): Promise<{ match: Match | null }> {
 	const contact = await req.getContact();
 	const body = await req.getBody<Body>(bodySchema);
 
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	await db.like(contact.id, body.target);
 
 	const match = await db.matchGet(contact.id, body.target);
@@ -32,7 +32,7 @@ export async function del(req: RequestData): Promise<{ matches: Match[] }> {
 	if (target == null) throw new RequestError(HttpStatus.UnprocessableEntity, 'Missing target');
 
 	const contact = await req.getContact();
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	await db.likesDelete(contact.id, target);
 	await db.messagesDeleteBetween(contact.id, target);
 	const res = await db.matchesGet(contact.id);

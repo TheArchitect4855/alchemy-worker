@@ -13,6 +13,6 @@ export async function post(req: RequestData): Promise<void> {
 	const contact = await req.getContact();
 	const body = await req.getBody<Post>(postSchema);
 
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	await db.reportCreate(body.contact, body.reason, contact.id);
 }

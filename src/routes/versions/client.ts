@@ -12,7 +12,7 @@ type GetResponse = {
 };
 
 export async function get(req: RequestData): Promise<GetResponse> {
-	const db = await Database.getCachedInterface(req.env);
+	const db = req.env.cachedDatabase;
 	const version = await db.clientVersionGetLatest();
 
 	return {
