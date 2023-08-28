@@ -7,6 +7,10 @@ const codeRegex = /^\d{6}$/;
 const phoneRegex = /^\+[1-9]\d{1,14}$/;
 const twilioApi = 'https://verify.twilio.com/v2';
 
+type TwilioLookupResponse = {
+	valid: boolean,
+};
+
 type TwilioVerifyResponse = {
 	status: 'pending' | 'approved' | 'canceled',
 };
@@ -24,6 +28,21 @@ export default class LoginHandler {
 
 	async sendLoginCode(phone: string, channel: 'sms' | 'whatsapp'): Promise<void> {
 		if (!phoneRegex.test(phone)) throw new RequestError(HttpStatus.UnprocessableEntity, 'Invalid phone number format');
+		const lookupRequest = await fetch(`https://lookups.twilio.com/v2/PhoneNumbers/${phone}`, {
+			headers: { 'Authorization': this.getAuthHeader() },
+		});
+
+		if (lookupRequest.ok) {
+			const lookupResponse = await lookupRequest.json() as TwilioLookupResponse;
+			if (!lookupResponse.valid) throw new RequestError(HttpStatus.UnprocessableEntity, 'Invalid phone number');
+		} else {
+			// If Twilio's lookup API fails, log the error
+			// but still try to verify the phone number in
+			// case this is only a partial failure on Twilio's
+			// side.
+			const text = await lookupRequest.text();
+			console.error(`Twilio lookup failed: ${lookupRequest.status} ${lookupRequest.statusText}\n${text}`);
+		}
 
 		const body = {
 			To: phone,
@@ -65,9 +84,14 @@ export default class LoginHandler {
 		const auth = btoa(`${this._acctSid}:${this._auth}`);
 		return fetch(twilioApi + endpoint, {
 			body: urlEncodeObject(body),
-			headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+			headers: { 'Authorization': this.getAuthHeader(), 'Content-Type': 'application/x-www-form-urlencoded' },
 			method: 'POST',
 		});
+	}
+
+	private getAuthHeader(): string {
+		const auth = btoa(`${this._acctSid}:${this._auth}`);
+		return `Basic ${auth}`;
 	}
 
 	static getHandler(env: Env): LoginHandler {

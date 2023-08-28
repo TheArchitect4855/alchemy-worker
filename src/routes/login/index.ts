@@ -38,7 +38,7 @@ export async function post(req: RequestData): Promise<{ token: string }> {
 
 	const age = Math.floor(Duration.between(new Date(), contact.dob).asYears());
 	if (age < 18) throw new RequestError(HttpStatus.Forbidden, 'Contact age is under 18');
-	
+
 	const token = await jwt.createSessionToken(Duration.days(30), contact.id, contact.phone, contact.dob, contact.isRedlisted, contact.tosAgreed, req.env);
 	return { token };
 }
