@@ -1,3 +1,10 @@
+CREATE TABLE client_versions (
+	semver TEXT NOT NULL,
+	is_update_required BOOLEAN NOT NULL,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+	PRIMARY KEY (created_at, semver)
+);
+
 -- To extend this to support more contact methods (e.g. email),
 -- make both phone and email nullable and then add a check constraint.
 CREATE TABLE contacts (

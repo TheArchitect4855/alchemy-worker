@@ -1,9 +1,9 @@
 import { Env } from "..";
-import { Match, Profile, Message, Preferences, Contact, Request, NotificationConfig } from "./database/types";
+import { Match, Profile, Message, Preferences, Contact, Request, NotificationConfig, ClientVersion } from "./database/types";
 import { Duration } from "./time";
 import Location from "./Location";
 import { CachedDatabaseInterface, DatabaseInterface, NeonDatabaseInterface } from "./database/dbi";
-import { canMessageContactSchema, contactSchema, explorePreferencesSchema, preferencesSchema, profileSchema } from "./database/cache_schemas";
+import { canMessageContactSchema, clientVersionSchema, contactSchema, explorePreferencesSchema, preferencesSchema, profileSchema } from "./database/cache_schemas";
 
 const likesMaxAge = '24 HOURS';
 
@@ -37,6 +37,24 @@ export default class Database {
 		});
 
 		return (parseInt(row?.n) ?? 0) > 0;
+	}
+
+	async clientVersionGetLatest(): Promise<ClientVersion> {
+		const row = await this._interface.readOne(`
+			SELECT semver, is_update_required, created_at
+			FROM client_versions
+			ORDER BY created_at DESC
+			LIMIT 1
+		`, [], {
+			key: 'client_versions.latest',
+			schema: clientVersionSchema,
+		});
+
+		return {
+			semver: row!.semver,
+			isUpdateRequired: row!.is_update_required,
+			createdAt: new Date(row!.created_at),
+		};
 	}
 
 	async contactCreate(phone: string, dob: Date, isRedlisted: boolean): Promise<string> {

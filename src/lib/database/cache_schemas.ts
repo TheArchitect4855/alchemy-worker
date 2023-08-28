@@ -6,6 +6,12 @@ export const canMessageContactSchema = z.object({
 	n: z.string().regex(/^\d+$/).nullable(),
 });
 
+export const clientVersionSchema = z.object({
+	semver: z.string(),
+	is_update_required: z.boolean(),
+	created_at: z.date().or(z.string().regex(dateRegex)),
+});
+
 export const contactSchema = z.object({
 	id: z.string().uuid(),
 	phone: z.string(),

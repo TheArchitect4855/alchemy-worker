@@ -9,6 +9,7 @@ import * as profileIndexTs from './routes/profile/index';
 import * as messagesIdTs from './routes/messages/id';
 import * as messagesIndexTs from './routes/messages/index';
 import * as availabilityTs from './routes/availability';
+import * as versionsClientTs from './routes/versions/client';
 import * as likesTs from './routes/likes';
 import * as contactTs from './routes/contact';
 import * as preferencesTs from './routes/preferences';
@@ -26,6 +27,7 @@ const routes: { [pathname: string]: HandlerModule } = {
 	'/messages/id': messagesIdTs,
 	'/messages': messagesIndexTs,
 	'/availability': availabilityTs,
+	'/versions/client': versionsClientTs,
 	'/likes': likesTs,
 	'/contact': contactTs,
 	'/preferences': preferencesTs,

@@ -1,3 +1,9 @@
+export type ClientVersion = {
+	semver: string,
+	isUpdateRequired: boolean,
+	createdAt: Date,
+};
+
 export type Contact = {
 	id: string,
 	phone: string,
