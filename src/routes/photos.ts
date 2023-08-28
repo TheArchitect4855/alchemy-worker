@@ -46,7 +46,6 @@ export async function post(req: RequestData): Promise<{ url: string }> {
 	const key = await req.uploadBody(req.env.R2_PHOTOS, maxPhotoSize);
 	const url = getUrl(req.url, key);
 	await db.photoAdd(contact.id, url, contact.dob);
-	db.close(req.ctx);
 
 	return { url };
 }
@@ -62,8 +61,7 @@ export async function del(req: RequestData): Promise<void> {
 
 	const url = getUrl(req.url, key);
 	await db.photoRemove(contact.id, url, contact.dob);
-	db.close(req.ctx);
-	await req.env.R2_PHOTOS.delete([ key ]);
+	await req.env.R2_PHOTOS.delete([key]);
 }
 
 function getUrl(url: URL, key: string): string {

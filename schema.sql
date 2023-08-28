@@ -1,3 +1,16 @@
+CREATE TABLE api_logs (
+	method VARCHAR(16) NOT NULL,
+	url TEXT NOT NULL,
+	status INT NOT NULL CHECK (status >= 100 AND status < 600),
+	request_duration INTERVAL NOT NULL,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+	client_info TEXT,
+	error_message TEXT CHECK (error_message IS NULL OR status != 200),
+	client_ip VARCHAR(39),
+	contact_id UUID,
+	user_agent TEXT
+);
+
 CREATE TABLE client_versions (
 	semver TEXT NOT NULL,
 	is_update_required BOOLEAN NOT NULL,

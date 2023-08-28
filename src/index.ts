@@ -3,6 +3,8 @@ import RequestData from './lib/RequestData';
 import routes from './routes';
 import { HandlerFn } from './lib/request_types';
 import { HttpStatus } from './status';
+import Database from './lib/Database';
+import { getPayload as getJwtPayload } from './lib/jwt';
 
 const origin = 'https://web.usealchemy.app';
 type HeaderDict = { [header: string]: string };
@@ -35,6 +37,7 @@ export default {
 		let pathname = url.pathname;
 		if (pathname.length > 1 && pathname.endsWith('/')) pathname = pathname.substring(0, pathname.length - 1);
 
+		const db = await Database.getInterface(env);
 		const headers = getCorsHeaders(request.method, request.headers);
 		try {
 			const handler = routes[pathname];
@@ -60,21 +63,54 @@ export default {
 
 			if (fn == undefined) throw new RequestError(HttpStatus.MethodNotAllowed, `${request.method} is not supported on this endpoint`);
 
-			const res = fn(new RequestData(request, url, env, ctx));
-			if (res instanceof Promise) return respondWith(await res, headers);
-			else return respondWith(res, headers);
+			let res = fn(new RequestData(request, url, env, ctx));
+			if (res instanceof Promise) res = await res;
+
+			await createApiLog(db, request, 200, null);
+			return respondWith(res, headers);
 		} catch (e: any) {
 			if (e instanceof RequestError) {
+				await createApiLog(db, request, e.status, e.message);
 				return new Response(e.message, { headers, status: e.status });
 			} else {
 				const id = (Date.now() % 86_400_000).toString(16);
-				console.log(`Internal server error ${id}: ${e}`);
+				const message = `Internal server error ${id}: ${e}`;
+				console.log(message);
 				console.error(e);
+				await createApiLog(db, request, 500, message);
 				return new Response(id, { headers, status: 500 });
 			}
+		} finally {
+			Database.closeCurrentInterface(ctx);
 		}
 	},
 };
+
+function createApiLog(db: Database, req: Request, status: number, errorMessage: string | null): Promise<void> {
+	const authorization = req.headers.get('Authorization');
+	const bearer = 'Bearer ';
+	let contactId: string | null = null;
+	if (authorization?.startsWith(bearer)) {
+		const token = authorization.substring(bearer.length);
+		const payload = getJwtPayload(token);
+		if (payload != null) contactId = payload.sub;
+	}
+
+	const userAgent = req.headers.get('user-agent');
+	const xClientInfo = req.headers.get('x-client-info');
+	const clientInfo = xClientInfo ?? userAgent;
+	return db.apiLogsCreate(
+		req.method,
+		req.url,
+		status,
+		new Date(), // Creating a date in a worker script always returns the start of the request
+		clientInfo,
+		errorMessage,
+		req.headers.get('cf-connecting-ip'),
+		contactId,
+		userAgent
+	);
+}
 
 function getCorsHeaders(method: string, headers: Headers): HeaderDict {
 	let o: string;

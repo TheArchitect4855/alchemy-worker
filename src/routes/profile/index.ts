@@ -16,7 +16,7 @@ const postSchema = z.object({
 	gender: z.string().min(1, 'gender must not be blank').max(16, 'gender must be < 16 characters'),
 	isTransgender: z.boolean(),
 	photoUrls: z.array(z.string().url('photo URLs must be URLs')).max(maxPhotoCount),
-	relationshipInterests: z.array(z.enum([ 'flings', 'friends', 'romance' ])).min(1, 'must include a relationship interest').max(3),
+	relationshipInterests: z.array(z.enum(['flings', 'friends', 'romance'])).min(1, 'must include a relationship interest').max(3),
 	neurodiversities: z.array(z.string().min(1, 'cannot include blank neurodiversities').max(32, 'neurodiviersities must be < 32 characters')).max(maxCount),
 	interests: z.array(z.string().min(1, 'cannot include blank interests').max(32, 'interests must be < 32 characters')).max(maxCount),
 	pronouns: z.string().max(32, 'pronouns must be < 32 characters').nullable(),
@@ -31,7 +31,7 @@ const putSchema = z.object({
 	name: z.string().min(1, 'name must not be blank').max(128, 'name must be < 128 characters'),
 	bio: z.string().max(1024, 'bio must be < 1024 characters'),
 	gender: z.string().min(1, 'gender must not be blank').max(16, 'gender must be < 16 characters'),
-	relationshipInterests: z.array(z.enum([ 'flings', 'friends', 'romance' ])).min(1, 'must include a relationship interest').max(3),
+	relationshipInterests: z.array(z.enum(['flings', 'friends', 'romance'])).min(1, 'must include a relationship interest').max(3),
 	neurodiversities: z.array(z.string().min(1, 'cannot include blank neurodiversities').max(32, 'neurodiviersities must be < 32 characters')).max(maxCount),
 	interests: z.array(z.string().min(1, 'cannot include blank interests').max(32, 'interests must be < 32 characters')).max(maxCount),
 	pronouns: z.string().max(32, 'pronouns must be < 32 characters').nullable(),
@@ -67,17 +67,13 @@ export async function post(req: RequestData): Promise<Profile> {
 		}
 
 		throw e;
-	} finally {
-		db.close(req.ctx);
 	}
-
 }
 
 export async function get(req: RequestData): Promise<Profile> {
 	const contact = await req.getContact();
 	const db = await Database.getCachedInterface(req.env);
 	const profile = await db.profileGet(contact.id);
-	db.close(req.ctx);
 
 	if (profile == null) throw new RequestError(HttpStatus.NotFound, 'No profile for contact');
 	return profile;
@@ -103,7 +99,6 @@ export async function put(req: RequestData): Promise<Profile> {
 		body.pronouns,
 	);
 
-	db.close(req.ctx);
 	return profile;
 }
 
@@ -111,5 +106,4 @@ export async function del(req: RequestData): Promise<void> {
 	const contact = await req.getContact();
 	const db = await Database.getCachedInterface(req.env);
 	await db.profileDelete(contact.id);
-	db.close(req.ctx);
 }

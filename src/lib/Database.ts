@@ -18,6 +18,30 @@ export default class Database {
 		this._interface.close(ctx);
 	}
 
+	async apiLogsCreate(
+		method: string,
+		url: string,
+		status: number,
+		requestStart: Date,
+		clientInfo: string | null,
+		errorMessage: string | null,
+		clientIp: string | null,
+		contactId: string | null,
+		userAgent: string | null
+	): Promise<void> {
+		await this._interface.writeOne(`
+			INSERT INTO api_logs (
+				method, url, status, request_duration,
+				client_info, error_message, client_ip,
+				contact_id, user_agent
+			) VALUES ($1, $2, $3, now() - $4::TIMESTAMPTZ, $5, $6, $7, $8, $9)
+		`, [
+			method, url, status, requestStart,
+			clientInfo, errorMessage, clientIp,
+			contactId, userAgent,
+		], null);
+	}
+
 	async canMessageContact(from: string, to: string): Promise<boolean> {
 		const ord = [from, to];
 		ord.sort();
@@ -782,13 +806,29 @@ export default class Database {
 		return contacts.map((e) => e.contact);
 	}
 
+	private static s_currentDbi: DatabaseInterface | null = null;
+
+	static closeCurrentInterface(ctx: ExecutionContext): void {
+		if (this.s_currentDbi == null) return;
+		this.s_currentDbi.close(ctx);
+		this.s_currentDbi = null;
+	}
+
 	static async getInterface(env: Env): Promise<Database> {
-		const dbi = await NeonDatabaseInterface.connect(env.DATABASE_URL);
+		const dbi = await this.getRawDbi(env);
 		return new Database(dbi);
 	}
 
 	static async getCachedInterface(env: Env): Promise<Database> {
-		const dbi = await NeonDatabaseInterface.connect(env.DATABASE_URL);
+		const dbi = await this.getRawDbi(env);
 		return new Database(new CachedDatabaseInterface(env.KV_CACHE, dbi));
+	}
+
+	private static async getRawDbi(env: Env): Promise<DatabaseInterface> {
+		if (this.s_currentDbi != null) return this.s_currentDbi;
+
+		const dbi = await NeonDatabaseInterface.connect(env.DATABASE_URL);
+		this.s_currentDbi = dbi;
+		return dbi;
 	}
 }

@@ -14,7 +14,6 @@ type GetResponse = {
 export async function get(req: RequestData): Promise<GetResponse> {
 	const db = await Database.getCachedInterface(req.env);
 	const version = await db.clientVersionGetLatest();
-	db.close(req.ctx);
 
 	return {
 		version: version.semver,

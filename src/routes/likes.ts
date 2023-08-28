@@ -20,11 +20,10 @@ export async function post(req: RequestData): Promise<{ match: Match | null }> {
 
 	const db = await Database.getCachedInterface(req.env);
 	await db.like(contact.id, body.target);
-	
+
 	const match = await db.matchGet(contact.id, body.target);
 	if (match != null) await sendMatchNotification(body.target, new Messaging(req.env, db));
 
-	db.close(req.ctx);
 	return { match };
 }
 
@@ -37,7 +36,6 @@ export async function del(req: RequestData): Promise<{ matches: Match[] }> {
 	await db.likesDelete(contact.id, target);
 	await db.messagesDeleteBetween(contact.id, target);
 	const res = await db.matchesGet(contact.id);
-	db.close(req.ctx);
 
 	return { matches: res };
 }
@@ -45,7 +43,7 @@ export async function del(req: RequestData): Promise<{ matches: Match[] }> {
 async function sendMatchNotification(to: string, messaging: Messaging): Promise<void> {
 	const shouldSendNotification = await messaging.shouldSendNotifications(to, matchNotificationType);
 	if (!shouldSendNotification) return;
-	
+
 	const cfg = await messaging.getNotificationConfigFor(to) as NotificationConfig;
 	await messaging.send(to, {
 		token: cfg.token,

@@ -22,7 +22,6 @@ export async function post(req: RequestData): Promise<{ token: string }> {
 
 	const db = await Database.getCachedInterface(req.env);
 	const contact = await db.contactGetByPhone(body.phone);
-	db.close(req.ctx);
 
 	if (contact == null) {
 		const payload = {

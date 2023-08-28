@@ -15,5 +15,4 @@ export async function post(req: RequestData): Promise<void> {
 
 	const db = await Database.getCachedInterface(req.env);
 	await db.reportCreate(body.contact, body.reason, contact.id);
-	db.close(req.ctx);
 }

@@ -21,8 +21,6 @@ export async function get(req: RequestData): Promise<{ token: string }> {
 		contact = await db.contactGet(session.sub);
 	}
 
-	db.close(req.ctx);
-
 	if (contact == null)
 		throw new RequestError(HttpStatus.NotFound, "Contact does not exist");
 	const flags = [contact.isRedlisted, contact.tosAgreed]

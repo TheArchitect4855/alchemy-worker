@@ -20,7 +20,5 @@ export async function post(req: RequestData): Promise<void> {
 	} catch (e: any) {
 		if (e instanceof DatabaseError && e.kind == DatabaseErrorKind.DuplicateKey) return;
 		else throw e;
-	} finally {
-		db.close(req.ctx);
 	}
 }

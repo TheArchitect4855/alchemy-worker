@@ -34,8 +34,6 @@ export async function post(req: RequestData): Promise<{ token: string }> {
 		}
 
 		throw e;
-	} finally {
-		db.close(req.ctx);
 	}
 
 	const token = await jwt.createSessionToken(Duration.days(30), id, phone, dob, isRedlisted, false, req.env);
@@ -52,8 +50,6 @@ export async function put(req: RequestData): Promise<{ token: string }> {
 
 	const conn = await Database.getCachedInterface(req.env);
 	await conn.contactSetAgreeTos(contact.id, body.agreeTos);
-	conn.close(req.ctx);
-
 	const token = await jwt.createSessionToken(Duration.days(30), contact.id, contact.phone, contact.dob, contact.isRedlisted, body.agreeTos, req.env);
 	return { token };
 }

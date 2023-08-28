@@ -37,7 +37,6 @@ export async function post(req: RequestData): Promise<void> {
 
 	const db = await Database.getInterface(req.env);
 	await db.userLogCreate(id, logKey, contact?.id ?? null);
-	db.close(req.ctx);
 }
 
 export async function get(req: RequestData): Promise<LogStatus> {
@@ -51,7 +50,6 @@ export async function get(req: RequestData): Promise<LogStatus> {
 
 	const db = await Database.getInterface(req.env);
 	const logRequest = await db.requestGet(id, "logs");
-	db.close(req.ctx);
 
 	return {
 		logsRequested: logRequest != null,
@@ -62,7 +60,7 @@ async function validate(id: string, signature: string, timestamp: string, key: s
 	const k = await crypto.subtle.importKey('raw', hexDecodeBuffer(key), {
 		name: 'hmac',
 		hash: 'SHA-512',
-	}, false, [ 'verify' ]);
+	}, false, ['verify']);
 
 	const encoder = new TextEncoder();
 	const payload = `${id}.${timestamp}`;

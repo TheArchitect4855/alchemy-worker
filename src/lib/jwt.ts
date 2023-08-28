@@ -24,7 +24,7 @@ export async function createSessionToken(
 	tosAgreed: boolean,
 	env: Env,
 ): Promise<string> {
-	const flags = [ isRedlisted, tosAgreed ].map((e) => e ? '1' : '0').join('');
+	const flags = [isRedlisted, tosAgreed].map((e) => e ? '1' : '0').join('');
 	const payload = {
 		exp: Math.floor(Date.now() + validFor.asMilliseconds()),
 		sub: contactId,
@@ -71,10 +71,22 @@ export async function verify(jwt: string, env: Env): Promise<any | null> {
 	}
 }
 
+export function getPayload(jwt: string): any | null {
+	const parts = jwt.split('.');
+	if (parts.length != 3) return null;
+	try {
+		const payload = JSON.parse(base64Decode(parts[1]));
+		return payload;
+	} catch (e) {
+		console.log(`JWT get payload failed: ${e}`);
+		return null;
+	}
+}
+
 function getKey(env: Env): Promise<CryptoKey> {
 	const raw = hexDecodeBuffer(env.JWT_KEY_HEX);
 	return crypto.subtle.importKey('raw', raw, {
 		name: 'hmac',
 		hash: 'SHA-512',
-	}, false, [ 'sign', 'verify' ]);
+	}, false, ['sign', 'verify']);
 }

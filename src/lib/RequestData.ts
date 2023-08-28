@@ -36,7 +36,7 @@ export default class RequestData {
 		const payload = await this.getJwtPayload();
 		if (payload.sub == null) throw new RequestError(HttpStatus.Forbidden, 'Missing contact');
 
-		const [ isRedlisted, tosAgreed ] = payload.flg.split('').map((e: string) => e == '1');
+		const [isRedlisted, tosAgreed] = payload.flg.split('').map((e: string) => e == '1');
 		return {
 			id: payload.sub,
 			phone: payload.phn,

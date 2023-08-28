@@ -7,6 +7,5 @@ export async function get(req: RequestData): Promise<{ matches: Match[] }> {
 	const contact = await req.getContact();
 	const db = await Database.getCachedInterface(req.env);
 	const matches = await db.matchesGet(contact.id);
-	db.close(req.ctx);
 	return { matches };
 }

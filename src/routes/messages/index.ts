@@ -35,14 +35,13 @@ export async function get(req: RequestData): Promise<{ messages: Message[] }> {
 	if (olderThan) {
 		const maxId = parseInt(olderThan);
 		if (isNaN(maxId)) {
-			db.close(req.ctx);
 			throw new RequestError(HttpStatus.UnprocessableEntity, 'Invalid older than');
 		}
 
 		messages = await db.messagesGetOlder(contact.id, target, lim, maxId);
 	} else {
 		messages = await db.messagesGet(contact.id, target, lim);
-		
+
 		const notificationConfig = await db.notificationConfigGet(contact.id);
 		const split = notificationConfig?.pendingNotificationTypes.indexOf(matchMessageNotificationType);
 		if (notificationConfig != null && split != undefined && split >= 0) {
@@ -52,7 +51,6 @@ export async function get(req: RequestData): Promise<{ messages: Message[] }> {
 	}
 
 	await db.messagesMarkRead(messages.map((e) => e.id));
-	db.close(req.ctx);
 	return { messages };
 }
 
@@ -70,7 +68,6 @@ export async function post(req: RequestData): Promise<Message> {
 
 	const res = await db.messageCreate(contact.id, body.to, body.message);
 	await sendNewMessageNotification(contact.id, body.to, res, new Messaging(req.env, db));
-	db.close(req.ctx);
 	return res;
 }
 
