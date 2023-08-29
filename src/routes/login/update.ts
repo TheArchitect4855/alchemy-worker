@@ -1,4 +1,3 @@
-import Database from "../../lib/Database";
 import RequestData from "../../lib/RequestData";
 import { Duration } from "../../lib/time";
 import * as jwt from "../../lib/jwt";

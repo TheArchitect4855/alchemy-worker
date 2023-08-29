@@ -44,6 +44,7 @@ export default {
 		let dbi: NeonDatabaseInterface | null = null;
 		try {
 			dbi = await NeonDatabaseInterface.connect(env.DATABASE_URL);
+			env = { ...env }; // Clone env so we don't share DBIs across requests
 			env.cachedDatabase = new Database(new CachedDatabaseInterface(env.KV_CACHE, dbi));
 			env.rawDatabase = new Database(dbi);
 
