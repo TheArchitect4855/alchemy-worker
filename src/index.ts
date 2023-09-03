@@ -21,6 +21,7 @@ export interface Env {
 	LOG_SECRET_HEX: string,
 	TWILIO_ACCT_SID: string,
 	TWILIO_AUTH: string,
+	TWILIO_MESSAGING_PHN: string,
 	TWILIO_VERIFY_SID: string,
 	cachedDatabase: Database,
 	rawDatabase: Database,

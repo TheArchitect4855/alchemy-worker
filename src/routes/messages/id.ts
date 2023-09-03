@@ -1,9 +1,8 @@
 import { z } from "zod";
 import RequestData from "../../lib/RequestData";
-import Database from "../../lib/Database";
 
 const putSchema = z.object({
-	fcmToken: z.string(),
+	token: z.string(),
 });
 
 type Put = z.infer<typeof putSchema>;
@@ -13,5 +12,5 @@ export async function put(req: RequestData): Promise<void> {
 	const contact = await req.getContact();
 
 	const db = req.env.cachedDatabase;
-	await db.notificationConfigUpdate(contact.id, body.fcmToken);
+	await db.notificationConfigUpdate(contact.id, body.token);
 }

@@ -1,4 +1,4 @@
-import { Env } from "../..";
+import { Env } from "../../..";
 import { getTokenFromGCPServiceAccount } from '@sagi.io/workers-jwt';
 import { ServiceAccount } from "./types";
 

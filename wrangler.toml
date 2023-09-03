@@ -3,10 +3,13 @@ main = "src/index.ts"
 compatibility_date = "2023-05-13"
 
 kv_namespaces = [
-	{ binding = "KV_CACHE", id = "98dfc80fd79840e09ecb07680d549566", preview_id = "ae8df9c47d42456f909d9136bc4479b7" }
+	{ binding = "KV_CACHE", id = "98dfc80fd79840e09ecb07680d549566", preview_id = "ae8df9c47d42456f909d9136bc4479b7" },
 ]
 
 r2_buckets = [
 	{ binding = "R2_PHOTOS", bucket_name = "alchemy-photos", preview_bucket_name = "alchemy-dev" },
-	{ binding = "R2_LOGS", bucket_name = "alchemy-logs", preview_bucket_name = "alchemy-dev" }
+	{ binding = "R2_LOGS", bucket_name = "alchemy-logs", preview_bucket_name = "alchemy-dev" },
 ]
+
+[vars]
+TWILIO_MESSAGING_PHN = "+16206829141"

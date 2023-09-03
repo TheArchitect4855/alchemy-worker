@@ -2,11 +2,8 @@ import { z } from "zod";
 import RequestData from "../lib/RequestData";
 import RequestError from "../error";
 import { HttpStatus } from "../status";
-import { Match, NotificationConfig, Profile } from "../lib/database/types";
-import Database from "../lib/Database";
-import Messaging from "../lib/firebase/Messaging";
-
-const matchNotificationType = 'new-match';
+import { Match } from "../lib/database/types";
+import NotificationHandler from "../lib/notifications/NotificationHandler";
 
 const bodySchema = z.object({
 	target: z.string().uuid(),
@@ -22,7 +19,7 @@ export async function post(req: RequestData): Promise<{ match: Match | null }> {
 	await db.like(contact.id, body.target);
 
 	const match = await db.matchGet(contact.id, body.target);
-	if (match != null) await sendMatchNotification(body.target, new Messaging(req.env, db));
+	if (match != null) await sendMatchNotification(body.target, new NotificationHandler(req.env));
 
 	return { match };
 }
@@ -40,18 +37,13 @@ export async function del(req: RequestData): Promise<{ matches: Match[] }> {
 	return { matches: res };
 }
 
-async function sendMatchNotification(to: string, messaging: Messaging): Promise<void> {
-	const shouldSendNotification = await messaging.shouldSendNotifications(to);
+async function sendMatchNotification(to: string, handler: NotificationHandler): Promise<void> {
+	const shouldSendNotification = await handler.shouldSendNotificationsTo(to);
 	if (!shouldSendNotification) return;
-
-	const cfg = await messaging.getNotificationConfigFor(to) as NotificationConfig;
-	await messaging.send(to, {
-		token: cfg.token,
-		notification: {
+	await handler.sendNotificationTo(to, {
+		notificationData: {
 			title: 'Someone matched with you!',
 			body: 'See who it is!',
 		},
 	});
-
-	await messaging.updateLastNotificationSent(to);
 }

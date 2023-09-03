@@ -81,7 +81,6 @@ export default class LoginHandler {
 	}
 
 	private async doRequest(endpoint: string, body: EncodableObject): Promise<Response> {
-		const auth = btoa(`${this._acctSid}:${this._auth}`);
 		return fetch(twilioApi + endpoint, {
 			body: urlEncodeObject(body),
 			headers: { 'Authorization': this.getAuthHeader(), 'Content-Type': 'application/x-www-form-urlencoded' },

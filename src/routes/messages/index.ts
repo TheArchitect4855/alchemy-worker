@@ -1,11 +1,9 @@
 import { z } from "zod";
 import RequestError from "../../error";
-import Database from "../../lib/Database";
 import RequestData from "../../lib/RequestData";
-import { Message, NotificationConfig, Preferences } from "../../lib/database/types";
+import { Message, NotificationConfig } from "../../lib/database/types";
 import { HttpStatus } from "../../status";
-import Messaging, { MessagingError } from "../../lib/firebase/Messaging";
-import { Env } from "../..";
+import NotificationHandler from "../../lib/notifications/NotificationHandler";
 
 // TODO: Use durable objects + web sockets
 // for real-time chat.
@@ -60,32 +58,28 @@ export async function post(req: RequestData): Promise<Message> {
 	if (!canMessage) throw new RequestError(HttpStatus.Forbidden);
 
 	const res = await db.messageCreate(contact.id, body.to, body.message);
-	await sendNewMessageNotification(contact.id, body.to, res, new Messaging(req.env, db));
+	await sendNewMessageNotification(contact.id, body.to, res, new NotificationHandler(req.env));
 	return res;
 }
 
-async function sendNewMessageNotification(sender: string, recipient: string, message: Message, messaging: Messaging): Promise<void> {
-	const canSendNotification = await messaging.canSendNotifications(recipient);
+async function sendNewMessageNotification(sender: string, recipient: string, message: Message, handler: NotificationHandler): Promise<void> {
+	const canSendNotification = await handler.canSendNotificationsTo(recipient);
 	if (!canSendNotification) return;
 
-	const shouldSendNotification = await messaging.shouldSendNotifications(recipient);
+	const shouldSendNotification = await handler.shouldSendNotificationsTo(recipient);
 	const notification = shouldSendNotification ? {
 		title: 'You received a new message!',
 		body: 'Don\'t keep them waiting!',
 	} : undefined;
 
-	const cfg = await messaging.getNotificationConfigFor(recipient) as NotificationConfig;
-	await messaging.send(recipient, {
-		token: cfg.token,
-		notification,
-		data: {
+	await handler.sendNotificationTo(recipient, {
+		notificationData: notification,
+		messageData: {
 			kind: matchMessageNotificationType,
 			id: message.id.toString(),
 			content: message.content,
 			sentAt: message.sentAt.toISOString(),
 			sender,
-		},
+		}
 	});
-
-	if (shouldSendNotification) await messaging.updateLastNotificationSent(recipient);
 }
