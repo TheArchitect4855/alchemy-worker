@@ -422,8 +422,8 @@ export default class Database {
 			ON CONFLICT (contact) DO UPDATE
 			SET token = $2,
 				token_last_updated = CASE notification_config.token
-					WHEN $2 THEN now()
-					ELSE notification_config.token_last_updated
+					WHEN $2 THEN notification_config.token_last_updated
+					ELSE now()
 				END
 		`, [contact, token], null);
 	}
