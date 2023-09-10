@@ -1,4 +1,3 @@
-import Database from "../../lib/Database";
 import RequestData from "../../lib/RequestData";
 
 type GetResponse = {

@@ -67,6 +67,7 @@ export default class Database {
 		`, [], {
 			key: 'client_versions.latest',
 			schema: clientVersionSchema,
+			expirationTtl: 86400,
 		});
 
 		return {
