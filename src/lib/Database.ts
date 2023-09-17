@@ -3,6 +3,7 @@ import { Duration } from "./time";
 import Location from "./Location";
 import { DatabaseInterface } from "./database/dbi";
 import { canMessageContactSchema, clientVersionSchema, contactSchema, explorePreferencesSchema, preferencesSchema, profileSchema } from "./database/cache_schemas";
+import { AnalyticsKind } from "./analytics";
 
 const likesMaxAge = '24 HOURS';
 
@@ -11,6 +12,13 @@ export default class Database {
 
 	constructor(dbi: DatabaseInterface) {
 		this._interface = dbi;
+	}
+
+	async analyticsTrack(kind: AnalyticsKind, info: any): Promise<void> {
+		await this._interface.writeOne(`
+			INSERT INTO analytics (kind, info)
+			VALUES ($1, $2)
+		`, [kind, info], null);
 	}
 
 	async apiLogsCreate(

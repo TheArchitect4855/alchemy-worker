@@ -6,6 +6,7 @@ import { Duration } from "../../lib/time";
 import { HttpStatus } from "../../status";
 import { z } from "zod";
 import * as jwt from '../../lib/jwt';
+import { AnalyticsKind } from "../../lib/analytics";
 
 const postSchema = z.object({
 	code: z.string(),
@@ -17,11 +18,13 @@ type Post = z.infer<typeof postSchema>;
 export async function post(req: RequestData): Promise<{ token: string }> {
 	const body = await req.getBody<Post>(postSchema);
 	const handler = LoginHandler.getHandler(req.env);
-	const valid = (body.phone === req.env.DEBUG_PHONE) || (await handler.verifyLoginCode(body.phone, body.code)); // Debug phone is automatically valid
+	const isDebug = body.phone === req.env.DEBUG_PHONE;
+	const valid = isDebug || (await handler.verifyLoginCode(body.phone, body.code)); // Debug phone is automatically valid
 	if (valid !== true) throw new RequestError(HttpStatus.NotFound, 'Invalid login code');
 
 	const db = req.env.cachedDatabase;
 	const contact = await db.contactGetByPhone(body.phone);
+	if (!isDebug) await req.env.cachedDatabase.analyticsTrack(AnalyticsKind.LOGIN_SUCCESS, { phone: body.phone, contact: contact?.id });
 
 	if (contact == null) {
 		const payload = {
@@ -52,4 +55,5 @@ export async function get(req: RequestData): Promise<void> {
 
 	const handler = LoginHandler.getHandler(req.env);
 	await handler.sendLoginCode(phone, channel);
+	await req.env.cachedDatabase.analyticsTrack(AnalyticsKind.LOGIN_START, { phone });
 }

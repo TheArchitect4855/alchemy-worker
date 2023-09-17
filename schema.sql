@@ -1,3 +1,15 @@
+CREATE TABLE analytics (
+	kind SMALLINT NOT NULL REFERENCES analytics_kinds (id),
+	info JSONB,
+	occurrance TIMESTAMPTZ NOT NULL DEFAULT now(),
+	PRIMARY KEY (kind, occurrance)
+);
+
+CREATE TABLE analytics_kinds (
+	id SMALLSERIAL NOT NULL PRIMARY KEY,
+	name TEXT NOT NULL UNIQUE
+);
+
 CREATE TABLE api_logs (
 	method VARCHAR(16) NOT NULL,
 	url TEXT NOT NULL,

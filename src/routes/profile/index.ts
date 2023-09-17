@@ -7,6 +7,7 @@ import Location from "../../lib/Location";
 import { Profile } from "../../lib/database/types";
 import { DatabaseError, DatabaseErrorKind } from "../../lib/database/dbi";
 import { maxPhotoCount } from "../photos";
+import { AnalyticsKind } from "../../lib/analytics";
 
 const maxCount = 25;
 
@@ -60,6 +61,7 @@ export async function post(req: RequestData): Promise<Profile> {
 			body.locName,
 		);
 
+		await req.env.cachedDatabase.analyticsTrack(AnalyticsKind.PROFILE_CREATED, { contact: contact.id });
 		return profile;
 	} catch (e: any) {
 		if (e instanceof DatabaseError && e.kind == DatabaseErrorKind.DuplicateKey) {
@@ -106,4 +108,5 @@ export async function del(req: RequestData): Promise<void> {
 	const contact = await req.getContact();
 	const db = req.env.cachedDatabase;
 	await db.profileDelete(contact.id);
+	await db.analyticsTrack(AnalyticsKind.PROFILE_DELETED, { contact: contact.id });
 }
