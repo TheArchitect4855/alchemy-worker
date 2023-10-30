@@ -281,12 +281,12 @@ export default class Database {
 				AND read_at IS NULL
 		`, [contact, target], null);
 
-		const [contactActions, targetActions] = (await this._interface.readOne(`
+		const [contactActions, targetActions] = (await this._interface.readMany(`
 			SELECT actions
 			FROM interactions
 			WHERE (contact = $1 AND target = $2)
 				OR (contact = $2 AND target = $1)
-		`, [contact, target], null))?.map((e: any) => e.actions) as string[][];
+		`, [contact, target]))?.map((e: any) => e.actions) as string[][];
 
 		const actions = contactActions.filter((e) => targetActions.indexOf(e) >= 0);
 		return {
