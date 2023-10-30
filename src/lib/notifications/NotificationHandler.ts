@@ -54,7 +54,14 @@ export default class NotificationHandler {
 		if (twilioTokenRegex.test(token)) provider = new TwilioNotificationProvider(this._env);
 		else provider = new FirebaseNotificationProvider(this._env);
 
-		const res = await provider.send(token, info);
+		let res: NotificationSendResult;
+		try {
+			res = await provider.send(token, info);
+		} catch (e: unknown) {
+			console.error(`Notification provider failed to send notification: ${e}`);
+			return;
+		}
+
 		switch (res.status) {
 			case 'OK':
 				cfg.lastNotificationAt = new Date();
