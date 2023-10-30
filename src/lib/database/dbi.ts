@@ -14,6 +14,7 @@ type Row = {
 };
 
 export enum DatabaseErrorKind {
+	CheckConstraintViolation = 'Check Constraint Violation',
 	DuplicateKey = 'Duplicate Key',
 	ForeignKeyViolation = 'Foreign Key Violation',
 	Other = 'Other',
@@ -196,6 +197,9 @@ export class NeonDatabaseInterface implements DatabaseInterface {
 				break;
 			case '23503':
 				kind = DatabaseErrorKind.ForeignKeyViolation;
+				break;
+			case '23514':
+				kind = DatabaseErrorKind.CheckConstraintViolation;
 				break;
 			default:
 				kind = DatabaseErrorKind.Other;

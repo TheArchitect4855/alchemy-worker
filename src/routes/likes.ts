@@ -7,6 +7,7 @@ import NotificationHandler from "../lib/notifications/NotificationHandler";
 
 const bodySchema = z.object({
 	target: z.string().uuid(),
+	interactions: z.array(z.enum([ 'flings', 'friends', 'romance' ])).max(3).optional(),
 });
 
 type Body = z.infer<typeof bodySchema>;
@@ -16,7 +17,7 @@ export async function post(req: RequestData): Promise<{ match: Match | null }> {
 	const body = await req.getBody<Body>(bodySchema);
 
 	const db = req.env.cachedDatabase;
-	await db.like(contact.id, body.target);
+	await db.interactionsCreate(contact.id, body.target, body.interactions ?? []);
 
 	const match = await db.matchGet(contact.id, body.target);
 	if (match != null) await sendMatchNotification(body.target, new NotificationHandler(req.env));
@@ -30,7 +31,7 @@ export async function del(req: RequestData): Promise<{ matches: Match[] }> {
 
 	const contact = await req.getContact();
 	const db = req.env.cachedDatabase;
-	await db.likesDelete(contact.id, target);
+	await db.interactionsDelete(contact.id, target);
 	await db.messagesDeleteBetween(contact.id, target);
 	const res = await db.matchesGet(contact.id);
 

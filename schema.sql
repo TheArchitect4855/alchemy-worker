@@ -40,11 +40,12 @@ CREATE TABLE contacts (
 	tos_agreed BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-CREATE TABLE likes (
+CREATE TABLE interactions (
 	contact UUID NOT NULL REFERENCES contacts (id),
-	likes UUID NOT NULL REFERENCES contacts (id),
-	liked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-	UNIQUE (contact, likes)
+	target UUID NOT NULL REFERENCES contacts (id),
+	actions TEXT[] NOT NULL CHECK (actions <@ ARRAY['flings', 'friends', 'romance']),
+	created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+	PRIMARY KEY (contact, target)
 );
 
 CREATE TABLE messages (

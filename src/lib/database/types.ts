@@ -16,6 +16,7 @@ export type Match = {
 	profile: Profile,
 	lastMessage: Message | null,
 	numUnread: number,
+	interactions: string[],
 };
 
 export type Message = {

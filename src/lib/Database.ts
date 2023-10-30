@@ -5,7 +5,7 @@ import { DatabaseInterface } from "./database/dbi";
 import { canMessageContactSchema, clientVersionSchema, contactSchema, preferencesSchema, profileSchema } from "./database/cache_schemas";
 import { AnalyticsKind } from "./analytics";
 
-const likesMaxAge = '24 HOURS';
+const interactionMaxAge = '24 HOURS';
 
 export default class Database {
 	private _interface: DatabaseInterface;
@@ -50,13 +50,13 @@ export default class Database {
 		ord.sort();
 
 		const row = await this._interface.readOne(`
-			SELECT COUNT(*) AS n
-			FROM likes l1
-			INNER JOIN likes l2
-				ON l1.contact = l2.likes
-				AND l1.likes = l2.contact
-			WHERE l1.contact = $1
-				AND l1.likes = $2
+			SELECT count(*) AS n
+			FROM interactions i1
+			INNER JOIN interactions i2
+				ON i1.contact = i2.target
+				AND i1.target = i2.contact
+			WHERE i1.contact = $1
+				AND i1.target = $2
 		`, [from, to], {
 			key: `canMessage.${ord.join('.')}`,
 			schema: canMessageContactSchema,
@@ -169,15 +169,15 @@ export default class Database {
 		if (preferences == null) throw new Error('invalid contact ID');
 		const genderInterests = preferences.gender_interests?.map((e: string) => `'${e}'`).join(',') ?? '\'men\',\'nonbinary\',\'women\'';
 
-		const likes = (await this._interface.readMany(`
-			SELECT likes
-			FROM likes
+		const interactions = (await this._interface.readMany(`
+			SELECT target
+			FROM interactions
 			WHERE contact = $1
-				AND liked_at > now() - INTERVAL '${likesMaxAge}'
-		`, [contact])).map((e) => e.likes);
+				AND created_at > now() - INTERVAL '${interactionMaxAge}'
+		`, [contact])).map((e) => e.target);
 
 		const matches = await this.getMatchContactIds(contact);
-		const exclude = [contact, ...likes, ...matches].map((e) => `'${e}'`);
+		const exclude = [contact, ...interactions, ...matches].map((e) => `'${e}'`);
 
 		// Update location before getting potential matches
 		await this._interface.writeOne(`
@@ -215,46 +215,46 @@ export default class Database {
 		return profiles;
 	}
 
-	async like(contact: string, likes: string): Promise<void> {
+	async interactionsCreate(contact: string, target: string, actions: string[]): Promise<void> {
 		await this._interface.writeOne(`
-			INSERT INTO likes (contact, likes)
-			VALUES ($1, $2)
-			ON CONFLICT (contact, likes) DO UPDATE
-			SET liked_at = now()
-		`, [contact, likes], null);
+			INSERT INTO interactions (contact, target, actions)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (contact, target) DO UPDATE
+			SET created_at = now()
+		`, [contact, target, actions], null);
 	}
 
-	async likesGet(contact: string): Promise<Profile[]> {
+	async interactionsGet(contact: string): Promise<Profile[]> {
 		const contacts = await this._interface.readMany(`
-			SELECT likes
-			FROM likes
+			SELECT target
+			FROM interactions
 			WHERE contact = $1
-				AND liked_at > now() + INTERVAL '${likesMaxAge}'
+				AND created_at > now() + INTERVAL '${interactionMaxAge}'
 		`, [contact]);
 
 		const profiles = await Promise.all(contacts.map((e) => this.profileGet(e.contact) as Promise<Profile>));
 		return profiles;
 	}
 
-	async likesDelete(contact: string, likes: string): Promise<void> {
+	async interactionsDelete(contact: string, target: string): Promise<void> {
 		await this._interface.deleteOne(`
-			DELETE FROM likes
+			DELETE FROM interactions
 			WHERE contact = $1
-				AND likes = $2
-		`, [contact, likes], null);
+				AND target = $2
+		`, [contact, target], null);
 	}
 
-	async matchGet(contact: string, likes: string): Promise<Match | null> {
+	async matchGet(contact: string, target: string): Promise<Match | null> {
 		const row = await this._interface.readOne(`
-			SELECT COUNT(*) = 2 AS is_match
-			FROM likes
-			WHERE (contact = $1 AND likes = $2)
-				OR (contact = $2 AND likes = $1)
-		`, [contact, likes], null);
+			SELECT count(*) = 2 AS is_match
+			FROM interactions
+			WHERE (contact = $1 AND target = $2)
+				OR (contact = $2 AND target = $1)
+		`, [contact, target], null);
 
 		if (row?.is_match !== true) return null;
 
-		const profile = (await this.profileGet(likes))!;
+		const profile = (await this.profileGet(target))!;
 		const lastMessageRow = await this._interface.readOne(`
 			SELECT id, from_contact, to_contact, sent_at
 			FROM messages
@@ -262,7 +262,7 @@ export default class Database {
 				OR (from_contact = $2 AND to_contact = $1)
 			ORDER BY id DESC
 			LIMIT 1
-		`, [contact, likes], null);
+		`, [contact, target], null);
 
 		let lastMessage: Message | null = null;
 		if (lastMessageRow != null) {
@@ -279,17 +279,27 @@ export default class Database {
 			FROM messages
 			WHERE from_contact = $2 AND to_contact = $1
 				AND read_at IS NULL
-		`, [contact, likes], null);
+		`, [contact, target], null);
 
+		const [contactActions, targetActions] = (await this._interface.readOne(`
+			SELECT actions
+			FROM interactions
+			WHERE (contact = $1 AND target = $2)
+				OR (contact = $2 AND target = $1)
+		`, [contact, target], null))?.map((e: any) => e.actions) as string[][];
+
+		const actions = contactActions.filter((e) => targetActions.indexOf(e) >= 0);
 		return {
 			profile,
 			lastMessage: lastMessage,
 			numUnread: parseInt(numUnread?.n) ?? 0,
+			interactions: actions,
 		};
 	}
 
 	async matchesGet(contact: string): Promise<Match[]> {
-		const contacts = await this.getMatchContactIds(contact);
+		const contactInteractions = await this.getMatchContactIdsAndInteractions(contact);
+		const contacts = contactInteractions.map((e) => e.target);
 		const profiles = await Promise.all(contacts.map((e) => this.profileGet(e)));
 		const lastMessages = await Promise.all(contacts.map((e) => this._interface.readOne(`
 			SELECT id, from_contact, to_contact, content, sent_at
@@ -326,6 +336,7 @@ export default class Database {
 				profile: profiles[i]!,
 				lastMessage,
 				numUnread: parseInt(numUnread[i]?.n) ?? 0,
+				interactions: contactInteractions[i].interactions,
 			});
 		}
 
@@ -725,9 +736,9 @@ export default class Database {
 
 	async profileDelete(contact: string): Promise<void> {
 		await this._interface.deleteMany(`
-			DELETE FROM likes
+			DELETE FROM interactions
 			WHERE contact = $1
-				OR likes = $1
+				OR target = $1
 		`, [contact]);
 
 		await this._interface.deleteMany(`
@@ -816,14 +827,30 @@ export default class Database {
 
 	private async getMatchContactIds(contact: string): Promise<string[]> {
 		const contacts = await this._interface.readMany(`
-			SELECT l2.contact
-			FROM likes l1
-			INNER JOIN likes l2
-				ON l2.contact = l1.likes
-				AND l2.likes = l1.contact
-			WHERE l1.contact = $1
+			SELECT i2.contact
+			FROM interactions i1
+			INNER JOIN interactions i2
+				ON i2.contact = i1.target
+				AND i2.target = i1.contact
+			WHERE i1.contact = $1
 		`, [contact]);
 
 		return contacts.map((e) => e.contact);
+	}
+
+	private async getMatchContactIdsAndInteractions(contact: string): Promise<{ target: string, interactions: string[] }[]> {
+		const rows = await this._interface.readMany(`
+			SELECT i2.contact, i1.actions AS contact_actions, i2.actions AS target_actions
+			FROM interactions i1
+			INNER JOIN interactions i2
+				ON i2.contact = i1.target
+				AND i2.target = i1.contact
+			WHERE i1.contact = $1
+		`, [contact]);
+
+		return rows.map((e) => {
+			const interactions = e.contact_actions.filter((f: string) => e.target_actions.indexOf(f) >= 0);
+			return { target: e.contact, interactions };
+		});
 	}
 }
