@@ -220,7 +220,8 @@ export default class Database {
 			INSERT INTO interactions (contact, target, actions)
 			VALUES ($1, $2, $3)
 			ON CONFLICT (contact, target) DO UPDATE
-			SET created_at = now()
+			SET actions = $3,
+				created_at = now()
 		`, [contact, target, actions], null);
 	}
 
