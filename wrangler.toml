@@ -1,4 +1,4 @@
-name = "api"
+name = "alchemy-api"
 main = "src/index.ts"
 compatibility_date = "2023-05-13"
 
