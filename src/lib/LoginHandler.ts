@@ -15,6 +15,8 @@ type TwilioVerifyResponse = {
 	status: 'pending' | 'approved' | 'canceled',
 };
 
+const initialCooldownMillis = 1000;
+
 export default class LoginHandler {
 	private _acctSid: string;
 	private _auth: string;
@@ -53,8 +55,11 @@ export default class LoginHandler {
 		if (!req.ok) {
 			const text = await req.text();
 			console.error(`Twilio error: ${req.status} ${req.statusText}\n${text}`);
+			LoginHandler._errorLock();
 			throw new RequestError(HttpStatus.ServiceUnavailable, 'Verification service is unavailable');
 		}
+
+		LoginHandler._currentCooldownMillis = initialCooldownMillis;
 	}
 
 	async verifyLoginCode(phone: string, code: string): Promise<boolean> {
@@ -70,6 +75,7 @@ export default class LoginHandler {
 		if (!req.ok && req.status != HttpStatus.NotFound) {
 			const text = await req.text();
 			console.error(`Twilio error: ${req.status} ${req.statusText}\n${text}`);
+			LoginHandler._errorLock();
 			throw new RequestError(HttpStatus.ServiceUnavailable, 'Verification service is unavailable');
 		} else if (req.status == HttpStatus.NotFound) {
 			return false;
@@ -77,6 +83,7 @@ export default class LoginHandler {
 
 		const res = await req.json<TwilioVerifyResponse>();
 		console.dir(res);
+		LoginHandler._currentCooldownMillis = initialCooldownMillis;
 		return res.status == 'approved';
 	}
 
@@ -93,7 +100,16 @@ export default class LoginHandler {
 		return `Basic ${auth}`;
 	}
 
+	private static _currentCooldownMillis = initialCooldownMillis;
+	private static _lockedUntil = Date.now();
+
 	static getHandler(env: Env): LoginHandler {
+		if (Date.now() < this._lockedUntil) throw new RequestError(HttpStatus.ServiceUnavailable);
 		return new LoginHandler(env.TWILIO_ACCT_SID, env.TWILIO_AUTH, env.TWILIO_VERIFY_SID);
+	}
+
+	private static _errorLock(): void {
+		this._lockedUntil = Date.now() + this._currentCooldownMillis;
+		this._currentCooldownMillis = Math.min(this._currentCooldownMillis * 2, 3.6e6);
 	}
 }

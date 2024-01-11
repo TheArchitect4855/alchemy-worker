@@ -1,5 +1,7 @@
 import { ZodSchema } from 'zod';
 import * as neon from '@neondatabase/serverless';
+import RequestError from '../../error';
+import { HttpStatus } from '../../status';
 
 type CacheOpts = {
 	key: string,
@@ -116,6 +118,8 @@ export class CachedDatabaseInterface implements DatabaseInterface {
 	}
 }
 
+const initialCooldownMillis = 1000;
+
 export class NeonDatabaseInterface implements DatabaseInterface {
 	private _client: neon.Client;
 
@@ -130,6 +134,7 @@ export class NeonDatabaseInterface implements DatabaseInterface {
 	async readOne(query: string, params: any[], _cacheOpts: CacheOpts | null): Promise<Row | null> {
 		try {
 			const res = await this._client.query(query, params);
+			NeonDatabaseInterface._currentCooldownMillis = initialCooldownMillis;
 			return this.returnOne(res.rows, 'readOne');
 		} catch (e: any) {
 			throw this.toDbError(e);
@@ -139,6 +144,7 @@ export class NeonDatabaseInterface implements DatabaseInterface {
 	async readMany(query: string, params: any[]): Promise<Row[]> {
 		try {
 			const res = await this._client.query(query, params);
+			NeonDatabaseInterface._currentCooldownMillis = initialCooldownMillis;
 			return res.rows;
 		} catch (e: any) {
 			throw this.toDbError(e);
@@ -148,6 +154,7 @@ export class NeonDatabaseInterface implements DatabaseInterface {
 	async writeOne(query: string, params: any[], _cacheOpts: CacheOpts | null): Promise<Row | null> {
 		try {
 			const res = await this._client.query(query, params);
+			NeonDatabaseInterface._currentCooldownMillis = initialCooldownMillis;
 			return this.returnOne(res.rows, 'writeOne');
 		} catch (e: any) {
 			throw this.toDbError(e);
@@ -157,6 +164,7 @@ export class NeonDatabaseInterface implements DatabaseInterface {
 	async writeMany(query: string, params: any[]): Promise<Row[]> {
 		try {
 			const res = await this._client.query(query, params);
+			NeonDatabaseInterface._currentCooldownMillis = initialCooldownMillis;
 			return res.rows;
 		} catch (e: any) {
 			throw this.toDbError(e);
@@ -166,6 +174,7 @@ export class NeonDatabaseInterface implements DatabaseInterface {
 	async deleteOne(query: string, params: any[], _cacheOpts: CacheOpts | null): Promise<Row | null> {
 		try {
 			const res = await this._client.query(query, params);
+			NeonDatabaseInterface._currentCooldownMillis = initialCooldownMillis;
 			return this.returnOne(res.rows, 'deleteOne');
 		} catch (e: any) {
 			throw this.toDbError(e);
@@ -175,6 +184,7 @@ export class NeonDatabaseInterface implements DatabaseInterface {
 	async deleteMany(query: string, params: any[]): Promise<Row[]> {
 		try {
 			const res = await this._client.query(query, params);
+			NeonDatabaseInterface._currentCooldownMillis = initialCooldownMillis;
 			return res.rows;
 		} catch (e: any) {
 			throw this.toDbError(e);
@@ -188,7 +198,11 @@ export class NeonDatabaseInterface implements DatabaseInterface {
 	}
 
 	private toDbError(error: any): DatabaseError {
-		if (!(error instanceof neon.DatabaseError)) throw new DatabaseError(DatabaseErrorKind.Other, error?.toString());
+		if (!(error instanceof neon.DatabaseError)) {
+			NeonDatabaseInterface._lockedUntil = Date.now() + NeonDatabaseInterface._currentCooldownMillis;
+			NeonDatabaseInterface._currentCooldownMillis = Math.min(NeonDatabaseInterface._currentCooldownMillis * 2, 3.6e6);
+			throw new DatabaseError(DatabaseErrorKind.Other, error?.toString());
+		}
 
 		let kind: DatabaseErrorKind;
 		switch (error.code) {
@@ -209,7 +223,12 @@ export class NeonDatabaseInterface implements DatabaseInterface {
 		return new DatabaseError(kind, error.message);
 	}
 
+	private static _currentCooldownMillis = initialCooldownMillis;
+	private static _lockedUntil: number = Date.now();
+
 	static async connect(config: string): Promise<NeonDatabaseInterface> {
+		if (Date.now() < this._lockedUntil) throw new RequestError(HttpStatus.ServiceUnavailable);
+
 		const client = new neon.Client(config);
 		await client.connect();
 		return new NeonDatabaseInterface(client);
