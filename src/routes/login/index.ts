@@ -1,5 +1,4 @@
 import RequestError from "../../error";
-import Database from "../../lib/Database";
 import LoginHandler from "../../lib/LoginHandler";
 import RequestData from "../../lib/RequestData";
 import { Duration } from "../../lib/time";

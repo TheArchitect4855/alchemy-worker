@@ -3,7 +3,6 @@ import RequestData from "../lib/RequestData";
 import RequestError from "../error";
 import { HttpStatus } from "../status";
 import { base64DecodeBuffer, hexDecodeBuffer } from "../lib/encoding";
-import Database from "../lib/Database";
 import { Contact } from "../lib/database/types";
 
 type LogStatus = {
