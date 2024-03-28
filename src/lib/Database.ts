@@ -1,8 +1,8 @@
-import { Match, Profile, Message, Preferences, Contact, Request, NotificationConfig, ClientVersion } from "./database/types";
+import { Match, Profile, Message, Preferences, Contact, Request, NotificationConfig, ClientVersion, PhoneGreenlist } from "./database/types";
 import { Duration } from "./time";
 import Location from "./Location";
 import { DatabaseInterface } from "./database/dbi";
-import { canMessageContactSchema, clientVersionSchema, contactSchema, explorePreferencesSchema, preferencesSchema, profileSchema } from "./database/cache_schemas";
+import { canMessageContactSchema, clientVersionSchema, contactSchema, preferencesSchema, profileSchema } from "./database/cache_schemas";
 import { AnalyticsKind } from "./analytics";
 
 const likesMaxAge = '24 HOURS';
@@ -450,6 +450,16 @@ export default class Database {
 			DELETE FROM notification_config
 			WHERE contact = $1
 		`, [contact], null);
+	}
+
+	async phoneGreenlistGet(): Promise<PhoneGreenlist[]> {
+		return (await this._interface.readMany(`
+			SELECT phone, nickname
+			FROM phone_greenlist
+		`, [])).map((e) => ({
+			phone: e.phone,
+			nickname: e.nickname,
+		}));
 	}
 
 	async photoAdd(contact: string, url: string, dob: Date): Promise<void> {

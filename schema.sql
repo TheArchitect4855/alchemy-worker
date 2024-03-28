@@ -64,6 +64,11 @@ CREATE TABLE notification_config (
 	last_notification_at TIMESTAMPTZ
 );
 
+CREATE TABLE phone_greenlist (
+	phone TEXT NOT NULL PRIMARY KEY,
+	nickname TEXT NOT NULL
+);
+
 CREATE TABLE preferences (
 	contact UUID NOT NULL PRIMARY KEY REFERENCES contacts (id),
 	allow_notifications BOOLEAN NOT NULL DEFAULT TRUE,

@@ -32,6 +32,11 @@ export type NotificationConfig = {
 	lastNotificationAt: Date | null,
 };
 
+export type PhoneGreenlist = {
+	phone: string,
+	nickname: string,
+};
+
 export type Preferences = {
 	allowNotifications: boolean,
 	showTransgender: boolean,
